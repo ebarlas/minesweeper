@@ -11,29 +11,6 @@ constexpr int WINDOW_HEIGHT = 336;
 constexpr int WINDOW_LEFT = 100;
 constexpr int WINDOW_TOP = 100;
 
-constexpr int TILES_LEFT = 15;
-constexpr int TILES_TOP = 81;
-constexpr int TILE_SIDE = 15;
-
-constexpr int DIGIT_PANEL_WIDTH = 65;
-constexpr int DIGIT_PANEL_HEIGHT = 37;
-
-constexpr int DIGIT_WIDTH = 19;
-constexpr int DIGIT_HEIGHT = 33;
-constexpr int DIGIT_PANEL_HORZ_MARGIN = (DIGIT_PANEL_WIDTH - (3 * DIGIT_WIDTH)) / 4;
-constexpr int DIGIT_PANEL_VERT_MARGIN = (DIGIT_PANEL_HEIGHT - DIGIT_HEIGHT) / 2;
-
-constexpr int FLAGS_LEFT = 25;
-constexpr int FLAGS_TOP = 21;
-
-constexpr int TIMER_LEFT = WINDOW_WIDTH - 25 - DIGIT_PANEL_WIDTH;
-constexpr int TIMER_TOP = 21;
-
-constexpr int FACE_WIDTH = 42;
-constexpr int FACE_HEIGHT = 42;
-constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
-constexpr int FACE_TOP = 19;
-
 class Options {
 private:
     const int rows;
@@ -276,6 +253,13 @@ public:
 
 class DigitPanel : public Sprite {
 protected:
+    static constexpr int DIGIT_PANEL_WIDTH = 65;
+    static constexpr int DIGIT_PANEL_HEIGHT = 37;
+    static constexpr int DIGIT_WIDTH = 19;
+    static constexpr int DIGIT_HEIGHT = 33;
+    static constexpr int DIGIT_PANEL_HORZ_MARGIN = (DIGIT_PANEL_WIDTH - (3 * DIGIT_WIDTH)) / 4;
+    static constexpr int DIGIT_PANEL_VERT_MARGIN = (DIGIT_PANEL_HEIGHT - DIGIT_HEIGHT) / 2;
+
     DigitPanel(ImageRepo &imageRepo, Renderer &renderer, int left, int top)
             : Sprite(imageRepo, renderer, {left, top, DIGIT_PANEL_WIDTH, DIGIT_PANEL_HEIGHT}) {
 
@@ -325,6 +309,9 @@ public:
 
 class Timer : public DigitPanel, public GameStateListener {
 private:
+    static constexpr int TIMER_LEFT = WINDOW_WIDTH - 25 - DIGIT_PANEL_WIDTH;
+    static constexpr int TIMER_TOP = 21;
+
     ClockTimer timer;
     bool running;
     int elapsed;
@@ -374,6 +361,9 @@ public:
 
 class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
 private:
+    static constexpr int FLAGS_LEFT = 25;
+    static constexpr int FLAGS_TOP = 21;
+
     int flags;
     const Options &options;
 
@@ -418,6 +408,11 @@ public:
 
 class Button : public Sprite, public TileListener {
 private:
+    static constexpr int FACE_WIDTH = 42;
+    static constexpr int FACE_HEIGHT = 42;
+    static constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
+    static constexpr int FACE_TOP = 19;
+
     GameState state;
     int revealed;
     const Options &options;
@@ -553,6 +548,10 @@ private:
     }
 
 public:
+    static constexpr int TILES_LEFT = 15;
+    static constexpr int TILES_TOP = 81;
+    static constexpr int TILE_SIDE = 15;
+
     Tile(ImageRepo &imageRepo, Renderer &renderer, int row, int col, int adjacentMines, bool mine) :
             Sprite(imageRepo, renderer,
                    {TILES_LEFT + col * TILE_SIDE, TILES_TOP + row * TILE_SIDE, TILE_SIDE, TILE_SIDE}),
@@ -648,8 +647,9 @@ private:
 public:
     Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options)
             : Sprite(imageRepo, renderer,
-                     {TILES_LEFT, TILES_TOP, TILES_LEFT + options.getColumns() * TILE_SIDE,
-                      TILES_TOP + options.getRows() * TILE_SIDE}),
+                     {Tile::TILES_LEFT, Tile::TILES_TOP,
+                      Tile::TILES_LEFT + options.getColumns() * Tile::TILE_SIDE,
+                      Tile::TILES_TOP + options.getRows() * Tile::TILE_SIDE}),
               mineSet(options),
               options(options) {
         for (int r = 0; r < options.getRows(); r++) {
@@ -673,8 +673,8 @@ public:
     }
 
     void handleClick(SDL_MouseButtonEvent evt) override {
-        int col = (evt.x - TILES_LEFT) / TILE_SIDE;
-        int row = (evt.y - TILES_TOP) / TILE_SIDE;
+        int col = (evt.x - Tile::TILES_LEFT) / Tile::TILE_SIDE;
+        int row = (evt.y - Tile::TILES_TOP) / Tile::TILE_SIDE;
         if (col < options.getColumns() && row < options.getRows())
             grid[row][col].handleClick(evt);
     }
