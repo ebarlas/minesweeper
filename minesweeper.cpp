@@ -11,9 +11,6 @@ constexpr int WINDOW_HEIGHT = 336;
 constexpr int WINDOW_LEFT = 100;
 constexpr int WINDOW_TOP = 100;
 
-constexpr int COLUMNS = 30;
-constexpr int ROWS = 16;
-
 constexpr int TILES_LEFT = 15;
 constexpr int TILES_TOP = 81;
 constexpr int TILE_SIDE = 15;
@@ -37,7 +34,48 @@ constexpr int FACE_HEIGHT = 42;
 constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
 constexpr int FACE_TOP = 19;
 
-constexpr int NUM_MINES = 99;
+class Options {
+private:
+    const int rows;
+    const int columns;
+    const int mines;
+public:
+    Options(int rows, int columns, int mines) : rows(rows), columns(columns), mines(mines) {
+
+    }
+
+    int getTiles() const {
+        return rows * columns;
+    }
+
+    int getMines() const {
+        return mines;
+    }
+
+    int getBlanks() const {
+        return getTiles() - mines;
+    }
+
+    int getRows() const {
+        return rows;
+    }
+
+    int getColumns() const {
+        return columns;
+    }
+
+    void forEachNeighbor(int row, int col, std::function<void(int, int)> fn) const {
+        for (int r = row - 1; r <= row + 1; r++) {
+            for (int c = col - 1; c <= col + 1; c++) {
+                if (r != row || c != col) {
+                    if (r >= 0 && r < rows && c >= 0 && c < columns) {
+                        fn(r, c);
+                    }
+                }
+            }
+        }
+    }
+};
 
 class ClockTimer {
 private:
@@ -337,6 +375,7 @@ public:
 class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
 private:
     int flags;
+    const Options &options;
 
     std::vector<FlagStateListener *> listeners;
 
@@ -346,8 +385,8 @@ private:
     }
 
 public:
-    FlagCounter(ImageRepo &imageRepo, Renderer &renderer)
-            : DigitPanel(imageRepo, renderer, FLAGS_LEFT, FLAGS_TOP), flags(NUM_MINES) {
+    FlagCounter(ImageRepo &imageRepo, Renderer &renderer, const Options &options)
+            : DigitPanel(imageRepo, renderer, FLAGS_LEFT, FLAGS_TOP), flags(options.getMines()), options(options) {
 
     }
 
@@ -361,7 +400,7 @@ public:
 
     void onStateChange(GameState state) override {
         if (state == GameState::INIT)
-            flags = NUM_MINES;
+            flags = options.getMines();
     }
 
     void onFlag(bool flagged) override {
@@ -381,6 +420,7 @@ class Button : public Sprite, public TileListener {
 private:
     GameState state;
     int revealed;
+    const Options &options;
 
     std::vector<GameStateListener *> listeners;
 
@@ -402,10 +442,11 @@ private:
     }
 
 public:
-    Button(ImageRepo &imageRepo, Renderer &renderer) :
+    Button(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             Sprite(imageRepo, renderer, {FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT}),
             state(GameState::INIT),
-            revealed(0) {
+            revealed(0),
+            options(options) {
 
     }
 
@@ -429,7 +470,7 @@ public:
                 notifyListeners();
             }
             revealed++;
-            if (revealed == ROWS * COLUMNS - NUM_MINES) {
+            if (revealed == options.getBlanks()) {
                 state = GameState::WON;
                 notifyListeners();
             }
@@ -441,71 +482,34 @@ public:
     }
 };
 
-class RowCol {
-private:
-    const int row;
-    const int col;
-
-    static void addNeighbor(int row, int col, std::vector<RowCol> &v) {
-        if (row >= 0 && row < ROWS && col >= 0 && col < COLUMNS)
-            v.push_back(RowCol{row, col});
-    }
-
-public:
-    RowCol(int row, int col) : row(row), col(col) {
-
-    }
-
-    int getRow() const {
-        return row;
-    }
-
-    int getCol() const {
-        return col;
-    }
-
-    static std::vector<RowCol> neighbors(int row, int col) {
-        std::vector<RowCol> v;
-        addNeighbor(row - 1, col - 1, v);
-        addNeighbor(row - 1, col, v);
-        addNeighbor(row - 1, col + 1, v);
-        addNeighbor(row, col - 1, v);
-        addNeighbor(row, col + 1, v);
-        addNeighbor(row + 1, col - 1, v);
-        addNeighbor(row + 1, col, v);
-        addNeighbor(row + 1, col + 1, v);
-        return v;
-    }
-};
-
-class MineSet {
+class MineField {
 private:
     Random random;
     std::set<int> mines;
+    const Options &options;
 public:
-    MineSet() {
+    MineField(const Options &options) : options(options) {
         reset();
     }
 
     void reset() {
         mines.clear();
-        for (int i = 1; i <= NUM_MINES; i++) {
+        for (int i = 1; i <= options.getMines(); i++) {
             while (mines.size() < i) {
-                mines.insert(random.randomInt(0, COLUMNS * ROWS - 1));
+                mines.insert(random.randomInt(0, options.getTiles() - 1));
             }
         }
     }
 
     bool mineAt(int row, int col) {
-        int projection = row * COLUMNS + col;
+        int projection = row * options.getColumns() + col;
         return mines.find(projection) != mines.end();
     }
 
     int adjacentMines(int row, int col) {
         int sum = 0;
-        for (auto rc : RowCol::neighbors(row, col))
-            if (mineAt(rc.getRow(), rc.getCol()))
-                sum++;
+        auto fn = [&sum, this](int r, int c) { sum = sum + (mineAt(r, c) ? 1 : 0); };
+        options.forEachNeighbor(row, col, fn);
         return sum;
     }
 };
@@ -638,15 +642,19 @@ public:
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:
     std::vector<std::vector<Tile>> grid;
-    MineSet mineSet;
+    MineField mineSet;
+    const Options &options;
 
 public:
-    Grid(ImageRepo &imageRepo, Renderer &renderer)
+    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options)
             : Sprite(imageRepo, renderer,
-                     {TILES_LEFT, TILES_TOP, TILES_LEFT + COLUMNS * TILE_SIDE, TILES_TOP + ROWS * TILE_SIDE}) {
-        for (int r = 0; r < ROWS; r++) {
+                     {TILES_LEFT, TILES_TOP, TILES_LEFT + options.getColumns() * TILE_SIDE,
+                      TILES_TOP + options.getRows() * TILE_SIDE}),
+              mineSet(options),
+              options(options) {
+        for (int r = 0; r < options.getRows(); r++) {
             std::vector<Tile> v;
-            for (int c = 0; c < COLUMNS; c++) {
+            for (int c = 0; c < options.getColumns(); c++) {
                 v.push_back(Tile{imageRepo, renderer, r, c, mineSet.adjacentMines(r, c), mineSet.mineAt(r, c)});
             }
             grid.push_back(v);
@@ -654,11 +662,11 @@ public:
     }
 
     void setListeners(const std::vector<TileListener *> &v) {
-        for (int r = 0; r < ROWS; r++) {
-            for (int c = 0; c < COLUMNS; c++) {
+        for (int r = 0; r < options.getRows(); r++) {
+            for (int c = 0; c < options.getColumns(); c++) {
                 std::vector<TileListener *> listeners = v;
-                for (auto rc : RowCol::neighbors(r, c))
-                    listeners.push_back(&grid[rc.getRow()][rc.getCol()]);
+                auto fn = [&listeners, this](int r, int c) { listeners.push_back(&grid[r][c]); };
+                options.forEachNeighbor(r, c, fn);
                 grid[r][c].setListeners(listeners);
             }
         }
@@ -667,7 +675,7 @@ public:
     void handleClick(SDL_MouseButtonEvent evt) override {
         int col = (evt.x - TILES_LEFT) / TILE_SIDE;
         int row = (evt.y - TILES_TOP) / TILE_SIDE;
-        if (col < COLUMNS && row < ROWS)
+        if (col < options.getColumns() && row < options.getRows())
             grid[row][col].handleClick(evt);
     }
 
@@ -680,8 +688,8 @@ public:
     void onStateChange(GameState state) override {
         if (state == GameState::INIT) {
             mineSet.reset();
-            for (int r = 0; r < ROWS; r++) {
-                for (int c = 0; c < COLUMNS; c++) {
+            for (int r = 0; r < options.getRows(); r++) {
+                for (int c = 0; c < options.getColumns(); c++) {
                     grid[r][c].reset(mineSet.adjacentMines(r, c), mineSet.mineAt(r, c));
                 }
             }
@@ -727,12 +735,12 @@ private:
 
     std::vector<Sprite *> sprites;
 public:
-    Game(ImageRepo &imageRepo, Renderer &renderer) :
+    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             background{imageRepo, renderer},
             timer{imageRepo, renderer},
-            flagCounter{imageRepo, renderer},
-            button{imageRepo, renderer},
-            grid{imageRepo, renderer},
+            flagCounter{imageRepo, renderer, options},
+            button{imageRepo, renderer, options},
+            grid{imageRepo, renderer, options},
             renderer(renderer) {
         std::vector<GameStateListener *> gameStateListeners{&grid, &timer, &flagCounter};
         button.setListeners(gameStateListeners);
@@ -802,9 +810,10 @@ int main(int argc, char **argv) {
     SDL_Window *win = createWindow();
     SDL_Renderer *ren = createRenderer(win);
 
+    Options options{16, 30, 99};
     ImageRepo imageRepo{ren, "images/"};
     Renderer renderer{ren};
-    Game game{imageRepo, renderer};
+    Game game{imageRepo, renderer, options};
     game.render();
 
     handleEvents(game);
