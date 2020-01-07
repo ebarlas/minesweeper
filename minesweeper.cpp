@@ -43,11 +43,15 @@ public:
         return columns;
     }
 
-    void forEachNeighbor(int row, int col, std::function<void(int, int)> fn) const {
+    bool isValid(int row, int col) const {
+        return row >= 0 && row < rows && col >= 0 && col < columns;
+    }
+
+    void forEachNeighbor(int row, int col, const std::function<void(int, int)> &fn) const {
         for (int r = row - 1; r <= row + 1; r++) {
             for (int c = col - 1; c <= col + 1; c++) {
                 if (r != row || c != col) {
-                    if (r >= 0 && r < rows && c >= 0 && c < columns) {
+                    if (isValid(r, c)) {
                         fn(r, c);
                     }
                 }
@@ -666,6 +670,12 @@ private:
     MineField mineField;
     const Options &options;
 
+    void forEachTile(const std::function<void(Tile &)> &fn) {
+        for (auto &row : grid)
+            for (auto &col : row)
+                fn(col);
+    }
+
 public:
     Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             Sprite(imageRepo, renderer, {
@@ -680,8 +690,9 @@ public:
             std::vector<Tile> v;
             v.reserve(options.getColumns());
             for (int c = 0; c < options.getColumns(); c++) {
-                v.emplace_back(Tile{imageRepo, renderer, boundingBox, r, c, mineField.adjacentMines(r, c),
-                                    mineField.mineAt(r, c)});
+                int adjMin = mineField.adjacentMines(r, c);
+                bool mine = mineField.mineAt(r, c);
+                v.emplace_back(Tile{imageRepo, renderer, boundingBox, r, c, adjMin, mine});
             }
             grid.push_back(v);
         }
@@ -701,14 +712,12 @@ public:
     void handleClick(SDL_MouseButtonEvent evt) override {
         int col = (evt.x - boundingBox.x) / TILE_SIDE;
         int row = (evt.y - boundingBox.y) / TILE_SIDE;
-        if (col < options.getColumns() && row < options.getRows())
+        if (options.isValid(row, col))
             grid[row][col].handleClick(evt);
     }
 
     void onFlagStateChange(bool exhausted) override {
-        for (auto &row : grid)
-            for (auto &col : row)
-                col.onFlagStateChange(exhausted);
+        forEachTile([exhausted](Tile &t) { t.onFlagStateChange(exhausted); });
     }
 
     void onStateChange(GameState state) override {
@@ -721,15 +730,11 @@ public:
             }
         }
 
-        for (auto &row : grid)
-            for (auto &col : row)
-                col.onStateChange(state);
+        forEachTile([state](Tile &t) { t.onStateChange(state); });
     }
 
     void render() override {
-        for (auto &row : grid)
-            for (auto &col : row)
-                col.render();
+        forEachTile([](Tile &t) { t.render(); });
     }
 };
 
