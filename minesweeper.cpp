@@ -54,6 +54,17 @@ public:
             }
         }
     }
+
+    static Options getOptions(char c) {
+        switch (c) {
+            case 'b':
+                return Options{9, 9, 10};
+            case 'i':
+                return Options{16, 16, 40};
+            default:
+                return Options{16, 30, 99};
+        }
+    }
 };
 
 class ClockTimer {
@@ -115,7 +126,7 @@ public:
 
     }
 
-    void close() {
+    ~ImageRepo() {
         for (auto &entry : images)
             SDL_DestroyTexture(entry.second);
     }
@@ -205,8 +216,16 @@ class Renderer {
 private:
     SDL_Renderer *ren;
 public:
-    Renderer(SDL_Renderer *ren) : ren(ren) {
+    Renderer(SDL_Window *win) : ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) {
 
+    }
+
+    ~Renderer() {
+        SDL_DestroyRenderer(ren);
+    }
+
+    ImageRepo createImageRepo(const char *dir) {
+        return ImageRepo{ren, dir};
     }
 
     void render(SDL_Texture *texture, SDL_Rect *rect = nullptr) {
@@ -748,6 +767,7 @@ private:
             sprite->render();
         renderer.repaint();
     }
+
 public:
     Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             background{imageRepo, renderer},
@@ -773,6 +793,7 @@ public:
     }
 
     void run() {
+        render();
         while (true) {
             SDL_Event e;
             int res = SDL_WaitEventTimeout(&e, 100);
@@ -791,50 +812,40 @@ public:
     }
 };
 
-SDL_Window *createWindow() {
-    return SDL_CreateWindow(
+class Window {
+private:
+    SDL_Window *win;
+public:
+    Window() : win(SDL_CreateWindow(
             "Minesweeper",
             WINDOW_LEFT,
             WINDOW_TOP,
             WINDOW_WIDTH,
             WINDOW_HEIGHT,
-            SDL_WINDOW_SHOWN);
-}
+            SDL_WINDOW_SHOWN)) {
 
-SDL_Renderer *createRenderer(SDL_Window *win) {
-    return SDL_CreateRenderer(
-            win,
-            -1,
-            SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-}
-
-Options getOptions(char c) {
-    switch (c) {
-        case 'b':
-            return Options{9, 9, 10};
-        case 'i':
-            return Options{16, 16, 40};
-        default:
-            return Options{16, 30, 99};
     }
-}
+
+    ~Window() {
+        SDL_DestroyWindow(win);
+    }
+
+    Renderer createRenderer() {
+        return Renderer{win};
+    }
+};
 
 int main(int argc, char **argv) {
-    SDL_Init(SDL_INIT_VIDEO);
-    SDL_Window *win = createWindow();
-    SDL_Renderer *ren = createRenderer(win);
-
     char mode = argc > 1 ? *argv[1] : 'e';
+    Options options{Options::getOptions(mode)};
 
-    Options options{getOptions(mode)};
-    ImageRepo imageRepo{ren, "images/"};
-    Renderer renderer{ren};
+    SDL_Init(SDL_INIT_VIDEO);
+    Window window;
+    Renderer renderer{window.createRenderer()};
+    ImageRepo imageRepo{renderer.createImageRepo("images/")};
+
     Game game{imageRepo, renderer, options};
-
     game.run();
 
-    imageRepo.close();
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
     SDL_Quit();
 }
