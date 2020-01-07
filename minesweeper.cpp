@@ -737,6 +737,17 @@ private:
     Renderer &renderer;
 
     std::vector<Sprite *> sprites;
+
+    void onClick(SDL_MouseButtonEvent evt) {
+        for (auto sprite : sprites)
+            sprite->onClick(evt);
+    }
+
+    void render() {
+        for (auto sprite : sprites)
+            sprite->render();
+        renderer.repaint();
+    }
 public:
     Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             background{imageRepo, renderer},
@@ -761,15 +772,22 @@ public:
         sprites.push_back(&grid);
     }
 
-    void onClick(SDL_MouseButtonEvent evt) {
-        for (auto sprite : sprites)
-            sprite->onClick(evt);
-    }
-
-    void render() {
-        for (auto sprite : sprites)
-            sprite->render();
-        renderer.repaint();
+    void run() {
+        while (true) {
+            SDL_Event e;
+            int res = SDL_WaitEventTimeout(&e, 100);
+            if (res != 0) {
+                if (e.type == SDL_QUIT) {
+                    break;
+                } else if (e.type == SDL_MOUSEBUTTONDOWN) {
+                    onClick(e.button);
+                    render();
+                }
+            } else {
+                // render on timeout
+                render();
+            }
+        }
     }
 };
 
@@ -788,24 +806,6 @@ SDL_Renderer *createRenderer(SDL_Window *win) {
             win,
             -1,
             SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
-}
-
-void handleEvents(Game &game) {
-    while (true) {
-        SDL_Event e;
-        int res = SDL_WaitEventTimeout(&e, 100);
-        if (res != 0) {
-            if (e.type == SDL_QUIT) {
-                break;
-            } else if (e.type == SDL_MOUSEBUTTONDOWN) {
-                game.onClick(e.button);
-                game.render();
-            }
-        } else {
-            // render on timeout
-            game.render();
-        }
-    }
 }
 
 Options getOptions(char c) {
@@ -830,9 +830,8 @@ int main(int argc, char **argv) {
     ImageRepo imageRepo{ren, "images/"};
     Renderer renderer{ren};
     Game game{imageRepo, renderer, options};
-    game.render();
 
-    handleEvents(game);
+    game.run();
 
     imageRepo.close();
     SDL_DestroyRenderer(ren);
