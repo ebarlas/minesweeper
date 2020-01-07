@@ -11,6 +11,8 @@ constexpr int WINDOW_HEIGHT = 336;
 constexpr int WINDOW_LEFT = 100;
 constexpr int WINDOW_TOP = 100;
 
+constexpr int TILE_SIDE = 15;
+
 class Options {
 private:
     const int rows;
@@ -511,8 +513,6 @@ public:
 
 class Tile : public Sprite, public TileListener, public GameStateListener, public FlagStateListener {
 private:
-    int row;
-    int col;
     int adjacentMines;
     int adjacentFlags;
     bool mine;
@@ -548,15 +548,13 @@ private:
     }
 
 public:
-    static constexpr int TILES_LEFT = 15;
-    static constexpr int TILES_TOP = 81;
-    static constexpr int TILE_SIDE = 15;
-
-    Tile(ImageRepo &imageRepo, Renderer &renderer, int row, int col, int adjacentMines, bool mine) :
-            Sprite(imageRepo, renderer,
-                   {TILES_LEFT + col * TILE_SIDE, TILES_TOP + row * TILE_SIDE, TILE_SIDE, TILE_SIDE}),
-            row(row),
-            col(col),
+    Tile(ImageRepo &imageRepo, Renderer &renderer, const SDL_Rect &gridRect, int row, int col, int adjacentMines,
+         bool mine) :
+            Sprite(imageRepo, renderer, {
+                    gridRect.x + col * TILE_SIDE,
+                    gridRect.y + row * TILE_SIDE,
+                    TILE_SIDE,
+                    TILE_SIDE}),
             adjacentMines(adjacentMines),
             adjacentFlags(0),
             mine(mine),
@@ -640,22 +638,31 @@ public:
 
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:
+    static constexpr int GRID_LEFT = 15;
+    static constexpr int GRID_TOP = 81;
+    static constexpr int GRID_WIDTH = 450;
+    static constexpr int GRID_HEIGHT = 240;
+
     std::vector<std::vector<Tile>> grid;
-    MineField mineSet;
+    MineField mineField;
     const Options &options;
 
 public:
-    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options)
-            : Sprite(imageRepo, renderer,
-                     {Tile::TILES_LEFT, Tile::TILES_TOP,
-                      Tile::TILES_LEFT + options.getColumns() * Tile::TILE_SIDE,
-                      Tile::TILES_TOP + options.getRows() * Tile::TILE_SIDE}),
-              mineSet(options),
-              options(options) {
+    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
+            Sprite(imageRepo, renderer, {
+                    GRID_LEFT + (GRID_WIDTH - options.getColumns() * TILE_SIDE) / 2,
+                    GRID_TOP + (GRID_HEIGHT - options.getRows() * TILE_SIDE) / 2,
+                    options.getColumns() * TILE_SIDE,
+                    options.getRows() * TILE_SIDE}),
+            mineField(options),
+            options(options) {
+        grid.reserve(options.getRows());
         for (int r = 0; r < options.getRows(); r++) {
             std::vector<Tile> v;
+            v.reserve(options.getColumns());
             for (int c = 0; c < options.getColumns(); c++) {
-                v.push_back(Tile{imageRepo, renderer, r, c, mineSet.adjacentMines(r, c), mineSet.mineAt(r, c)});
+                v.emplace_back(Tile{imageRepo, renderer, boundingBox, r, c, mineField.adjacentMines(r, c),
+                                    mineField.mineAt(r, c)});
             }
             grid.push_back(v);
         }
@@ -673,8 +680,8 @@ public:
     }
 
     void handleClick(SDL_MouseButtonEvent evt) override {
-        int col = (evt.x - Tile::TILES_LEFT) / Tile::TILE_SIDE;
-        int row = (evt.y - Tile::TILES_TOP) / Tile::TILE_SIDE;
+        int col = (evt.x - boundingBox.x) / TILE_SIDE;
+        int row = (evt.y - boundingBox.y) / TILE_SIDE;
         if (col < options.getColumns() && row < options.getRows())
             grid[row][col].handleClick(evt);
     }
@@ -687,27 +694,23 @@ public:
 
     void onStateChange(GameState state) override {
         if (state == GameState::INIT) {
-            mineSet.reset();
+            mineField.reset();
             for (int r = 0; r < options.getRows(); r++) {
                 for (int c = 0; c < options.getColumns(); c++) {
-                    grid[r][c].reset(mineSet.adjacentMines(r, c), mineSet.mineAt(r, c));
+                    grid[r][c].reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c));
                 }
             }
         }
 
-        for (auto &row : grid) {
-            for (auto &col : row) {
+        for (auto &row : grid)
+            for (auto &col : row)
                 col.onStateChange(state);
-            }
-        }
     }
 
     void render() override {
-        for (auto &row : grid) {
-            for (auto &col : row) {
+        for (auto &row : grid)
+            for (auto &col : row)
                 col.render();
-            }
-        }
     }
 };
 
@@ -805,12 +808,25 @@ void handleEvents(Game &game) {
     }
 }
 
+Options getOptions(char c) {
+    switch (c) {
+        case 'b':
+            return Options{9, 9, 10};
+        case 'i':
+            return Options{16, 16, 40};
+        default:
+            return Options{16, 30, 99};
+    }
+}
+
 int main(int argc, char **argv) {
     SDL_Init(SDL_INIT_VIDEO);
     SDL_Window *win = createWindow();
     SDL_Renderer *ren = createRenderer(win);
 
-    Options options{16, 30, 99};
+    char mode = argc > 1 ? *argv[1] : 'e';
+
+    Options options{getOptions(mode)};
     ImageRepo imageRepo{ren, "images/"};
     Renderer renderer{ren};
     Game game{imageRepo, renderer, options};
