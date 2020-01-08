@@ -669,6 +669,39 @@ public:
     }
 };
 
+template<typename T>
+class Matrix {
+private:
+    int rows;
+    int columns;
+    std::vector<T> matrix;
+public:
+    Matrix(int rows, int columns) : rows(rows), columns(columns) {
+        matrix.reserve(rows * columns);
+    }
+
+    T &at(int row, int col) {
+        int n = row * columns + col;
+        return matrix[n];
+    }
+
+    void fill(std::function<T(int row, int col)> fn) {
+        for (int r = 0; r < rows; r++) {
+            for (int c = 0; c < columns; c++) {
+                matrix.emplace_back(fn(r, c));
+            }
+        }
+    }
+
+    void forEach(std::function<void(int row, int col, T &val)> fn) {
+        for (int i = 0; i < matrix.size(); i++) {
+            int row = i / columns;
+            int col = i % columns;
+            fn(row, col, matrix[i]);
+        }
+    }
+};
+
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:
     static constexpr int GRID_LEFT = 15;
@@ -676,16 +709,9 @@ private:
     static constexpr int GRID_WIDTH = 450;
     static constexpr int GRID_HEIGHT = 240;
 
-    std::vector<std::vector<Tile>> grid;
+    Matrix<Tile> tiles;
     MineField mineField;
     const Options &options;
-
-    void forEachTile(const std::function<void(Tile &)> &fn) {
-        for (auto &row : grid)
-            for (auto &col : row)
-                fn(col);
-    }
-
 public:
     Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
             Sprite(imageRepo, renderer, {
@@ -693,57 +719,49 @@ public:
                     GRID_TOP + (GRID_HEIGHT - options.getRows() * TILE_SIDE) / 2,
                     options.getColumns() * TILE_SIDE,
                     options.getRows() * TILE_SIDE}),
+            tiles(options.getRows(), options.getColumns()),
             mineField(options),
             options(options) {
-        grid.reserve(options.getRows());
-        for (int r = 0; r < options.getRows(); r++) {
-            std::vector<Tile> v;
-            v.reserve(options.getColumns());
-            for (int c = 0; c < options.getColumns(); c++) {
-                int adjMin = mineField.adjacentMines(r, c);
-                bool mine = mineField.mineAt(r, c);
-                v.emplace_back(Tile{imageRepo, renderer, boundingBox, r, c, adjMin, mine});
-            }
-            grid.push_back(v);
-        }
+        auto fn = [&imageRepo, &renderer, this](int r, int c) {
+            int adjMin = mineField.adjacentMines(r, c);
+            bool mine = mineField.mineAt(r, c);
+            return Tile{imageRepo, renderer, boundingBox, r, c, adjMin, mine};
+        };
+        tiles.fill(fn);
     }
 
     void setListeners(const std::vector<TileListener *> &v) {
-        for (int r = 0; r < options.getRows(); r++) {
-            for (int c = 0; c < options.getColumns(); c++) {
-                std::vector<TileListener *> listeners = v;
-                auto fn = [&listeners, this](int r, int c) { listeners.push_back(&grid[r][c]); };
-                options.forEachNeighbor(r, c, fn);
-                grid[r][c].setListeners(listeners);
-            }
-        }
+        auto fe = [&v, this](int r, int c, Tile &t) {
+            std::vector<TileListener *> listeners = v;
+            auto fn = [&listeners, this](int r, int c) { listeners.push_back(&tiles.at(r, c)); };
+            options.forEachNeighbor(r, c, fn);
+            t.setListeners(listeners);
+        };
+        tiles.forEach(fe);
     }
 
     void handleClick(SDL_MouseButtonEvent evt) override {
         int col = (evt.x - boundingBox.x) / TILE_SIDE;
         int row = (evt.y - boundingBox.y) / TILE_SIDE;
-        grid[row][col].handleClick(evt);
+        tiles.at(row, col).handleClick(evt);
     }
 
     void onFlagStateChange(bool exhausted) override {
-        forEachTile([exhausted](Tile &t) { t.onFlagStateChange(exhausted); });
+        tiles.forEach([exhausted](int r, int c, Tile &t) { t.onFlagStateChange(exhausted); });
     }
 
     void onStateChange(GameState state) override {
         if (state == GameState::INIT) {
             mineField.reset();
-            for (int r = 0; r < options.getRows(); r++) {
-                for (int c = 0; c < options.getColumns(); c++) {
-                    grid[r][c].reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c));
-                }
-            }
+            auto fn = [this](int r, int c, Tile &t) { t.reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c)); };
+            tiles.forEach(fn);
         }
 
-        forEachTile([state](Tile &t) { t.onStateChange(state); });
+        tiles.forEach([state](int r, int c, Tile &t) { t.onStateChange(state); });
     }
 
     void render() override {
-        forEachTile([](Tile &t) { t.render(); });
+        tiles.forEach([](int r, int c, Tile &t) { t.render(); });
     }
 };
 
