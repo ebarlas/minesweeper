@@ -43,15 +43,11 @@ public:
         return columns;
     }
 
-    bool isValid(int row, int col) const {
-        return row >= 0 && row < rows && col >= 0 && col < columns;
-    }
-
     void forEachNeighbor(int row, int col, const std::function<void(int, int)> &fn) const {
         for (int r = row - 1; r <= row + 1; r++) {
             for (int c = col - 1; c <= col + 1; c++) {
                 if (r != row || c != col) {
-                    if (isValid(r, c)) {
+                    if (r >= 0 && r < rows && c >= 0 && c < columns) {
                         fn(r, c);
                     }
                 }
@@ -250,9 +246,9 @@ protected:
 
     bool contains(int x, int y) {
         return x >= boundingBox.x
-               && x <= boundingBox.x + boundingBox.w
+               && x < boundingBox.x + boundingBox.w
                && y >= boundingBox.y
-               && y <= boundingBox.y + boundingBox.h;
+               && y < boundingBox.y + boundingBox.h;
     }
 
     Sprite(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
@@ -571,11 +567,10 @@ private:
     }
 
 public:
-    Tile(ImageRepo &imageRepo, Renderer &renderer, const SDL_Rect &gridRect, int row, int col, int adjacentMines,
-         bool mine) :
-            Sprite(imageRepo, renderer, {
-                    gridRect.x + col * TILE_SIDE,
-                    gridRect.y + row * TILE_SIDE,
+    Tile(ImageRepo &repo, Renderer &ren, const SDL_Rect &grid, int row, int col, int adjacentMines, bool mine) :
+            Sprite(repo, ren, {
+                    grid.x + col * TILE_SIDE,
+                    grid.y + row * TILE_SIDE,
                     TILE_SIDE,
                     TILE_SIDE}),
             adjacentMines(adjacentMines),
@@ -712,8 +707,7 @@ public:
     void handleClick(SDL_MouseButtonEvent evt) override {
         int col = (evt.x - boundingBox.x) / TILE_SIDE;
         int row = (evt.y - boundingBox.y) / TILE_SIDE;
-        if (options.isValid(row, col))
-            grid[row][col].handleClick(evt);
+        grid[row][col].handleClick(evt);
     }
 
     void onFlagStateChange(bool exhausted) override {
