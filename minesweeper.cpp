@@ -780,9 +780,10 @@ public:
             mineField(options),
             options(options) {
         auto fn = [&imageRepo, &renderer, &layout, this](int r, int c) {
-            int adjMin = mineField.adjacentMines(r, c);
+            int adjacentMines = mineField.adjacentMines(r, c);
             bool mine = mineField.mineAt(r, c);
-            return Tile{imageRepo, renderer, layout.getTile(boundingBox.x, boundingBox.y, r, c), adjMin, mine};
+            SDL_Rect rect = layout.getTile(boundingBox.x, boundingBox.y, r, c);
+            return Tile{imageRepo, renderer, rect, adjacentMines, mine};
         };
         tiles.fill(fn);
     }
