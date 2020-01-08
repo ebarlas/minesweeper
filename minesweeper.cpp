@@ -95,7 +95,7 @@ public:
     const int rows;
     const int columns;
 
-    Layout(const int rows, const int cols) : rows(rows), columns(columns) {
+    Layout(const int rows, const int columns) : rows(rows), columns(columns) {
 
     }
 
