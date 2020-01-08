@@ -6,13 +6,6 @@
 #include <set>
 #include "SDL.h"
 
-constexpr int WINDOW_WIDTH = 480;
-constexpr int WINDOW_HEIGHT = 336;
-constexpr int WINDOW_LEFT = 100;
-constexpr int WINDOW_TOP = 100;
-
-constexpr int TILE_SIDE = 15;
-
 class Options {
 private:
     const int rows;
@@ -64,6 +57,94 @@ public:
             default:
                 return Options{16, 30, 99};
         }
+    }
+};
+
+class Layout {
+public:
+    static constexpr int WINDOW_WIDTH = 480;
+    static constexpr int WINDOW_HEIGHT = 336;
+    static constexpr int WINDOW_LEFT = 100;
+    static constexpr int WINDOW_TOP = 100;
+
+    static constexpr int TILE_SIDE = 15;
+
+    static constexpr int DIGIT_PANEL_WIDTH = 65;
+    static constexpr int DIGIT_PANEL_HEIGHT = 37;
+    static constexpr int DIGIT_WIDTH = 19;
+    static constexpr int DIGIT_HEIGHT = 33;
+    static constexpr int DIGIT_PANEL_HORZ_MARGIN = (DIGIT_PANEL_WIDTH - (3 * DIGIT_WIDTH)) / 4;
+    static constexpr int DIGIT_PANEL_VERT_MARGIN = (DIGIT_PANEL_HEIGHT - DIGIT_HEIGHT) / 2;
+
+    static constexpr int TIMER_LEFT = WINDOW_WIDTH - 25 - DIGIT_PANEL_WIDTH;
+    static constexpr int TIMER_TOP = 21;
+
+    static constexpr int FLAGS_LEFT = 25;
+    static constexpr int FLAGS_TOP = 21;
+
+    static constexpr int FACE_WIDTH = 42;
+    static constexpr int FACE_HEIGHT = 42;
+    static constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
+    static constexpr int FACE_TOP = 19;
+
+    static constexpr int GRID_LEFT = 15;
+    static constexpr int GRID_TOP = 81;
+    static constexpr int GRID_WIDTH = 450;
+    static constexpr int GRID_HEIGHT = 240;
+
+    const int rows;
+    const int columns;
+
+    Layout(const int rows, const int cols) : rows(rows), columns(columns) {
+
+    }
+
+    SDL_Rect getDigitPanel(int left, int top) const {
+        return {left, top, DIGIT_PANEL_WIDTH, DIGIT_PANEL_HEIGHT};
+    }
+
+    SDL_Rect getFlagsDigitPanel() const {
+        return getDigitPanel(FLAGS_LEFT, FLAGS_TOP);
+    }
+
+    SDL_Rect getTimerDigitPanel() const {
+        return getDigitPanel(TIMER_LEFT, TIMER_TOP);
+    }
+
+    SDL_Rect getDigit(int left, int top, int position) const {
+        return {
+                left + DIGIT_PANEL_HORZ_MARGIN * (position + 1) + DIGIT_WIDTH * position,
+                top + DIGIT_PANEL_VERT_MARGIN,
+                DIGIT_WIDTH,
+                DIGIT_HEIGHT};
+    }
+
+    SDL_Rect getFlagsDigit(int position) const {
+        return getDigit(FLAGS_LEFT, FLAGS_TOP, position);
+    }
+
+    SDL_Rect getTimerDigit(int position) const {
+        return getDigit(TIMER_LEFT, TIMER_TOP, position);
+    }
+
+    SDL_Rect getFace() const {
+        return {FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT};
+    }
+
+    SDL_Rect getTile(int gridX, int gridY, int row, int col) const {
+        return {gridX + col * TILE_SIDE, gridY + row * TILE_SIDE, TILE_SIDE, TILE_SIDE};
+    }
+
+    SDL_Rect getGrid() const {
+        return {
+                GRID_LEFT + (GRID_WIDTH - columns * TILE_SIDE) / 2,
+                GRID_TOP + (GRID_HEIGHT - rows * TILE_SIDE) / 2,
+                columns * TILE_SIDE,
+                rows * TILE_SIDE};
+    }
+
+    SDL_Rect getBackground() const {
+        return {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
     }
 };
 
@@ -289,25 +370,14 @@ public:
 
 class DigitPanel : public Sprite {
 protected:
-    static constexpr int DIGIT_PANEL_WIDTH = 65;
-    static constexpr int DIGIT_PANEL_HEIGHT = 37;
-    static constexpr int DIGIT_WIDTH = 19;
-    static constexpr int DIGIT_HEIGHT = 33;
-    static constexpr int DIGIT_PANEL_HORZ_MARGIN = (DIGIT_PANEL_WIDTH - (3 * DIGIT_WIDTH)) / 4;
-    static constexpr int DIGIT_PANEL_VERT_MARGIN = (DIGIT_PANEL_HEIGHT - DIGIT_HEIGHT) / 2;
-
-    DigitPanel(ImageRepo &imageRepo, Renderer &renderer, int left, int top)
-            : Sprite(imageRepo, renderer, {left, top, DIGIT_PANEL_WIDTH, DIGIT_PANEL_HEIGHT}) {
+    DigitPanel(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
+            : Sprite(imageRepo, renderer, boundingBox) {
 
     }
 
-    SDL_Rect getDigitRect(int position) {
-        return {
-                boundingBox.x + DIGIT_PANEL_HORZ_MARGIN * (position + 1) + DIGIT_WIDTH * position,
-                boundingBox.y + DIGIT_PANEL_VERT_MARGIN,
-                DIGIT_WIDTH,
-                DIGIT_HEIGHT};
-    }
+    virtual SDL_Rect getDigitRect(int position) = 0;
+
+    virtual int getDisplayValue() = 0;
 
 public:
     void render() override {
@@ -327,8 +397,6 @@ public:
         rect = getDigitRect(2);
         imageRepo.getDigit(onesDigit)->render(&rect);
     }
-
-    virtual int getDisplayValue() = 0;
 };
 
 enum class GameState {
@@ -345,16 +413,18 @@ public:
 
 class Timer : public DigitPanel, public GameStateListener {
 private:
-    static constexpr int TIMER_LEFT = WINDOW_WIDTH - 25 - DIGIT_PANEL_WIDTH;
-    static constexpr int TIMER_TOP = 21;
-
+    const Layout &layout;
     ClockTimer timer;
     bool running;
     int elapsed;
 public:
-    Timer(ImageRepo &imageRepo, Renderer &renderer)
-            : DigitPanel(imageRepo, renderer, TIMER_LEFT, TIMER_TOP), running(false), elapsed(0) {
+    Timer(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout)
+            : DigitPanel(imageRepo, renderer, layout.getTimerDigitPanel()), layout(layout), running(false), elapsed(0) {
 
+    }
+
+    SDL_Rect getDigitRect(int position) override {
+        return layout.getTimerDigit(position);
     }
 
     int getDisplayValue() override {
@@ -397,11 +467,9 @@ public:
 
 class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
 private:
-    static constexpr int FLAGS_LEFT = 25;
-    static constexpr int FLAGS_TOP = 21;
-
-    int flags;
     const Options &options;
+    const Layout &layout;
+    int flags;
 
     std::vector<FlagStateListener *> listeners;
 
@@ -411,13 +479,20 @@ private:
     }
 
 public:
-    FlagCounter(ImageRepo &imageRepo, Renderer &renderer, const Options &options)
-            : DigitPanel(imageRepo, renderer, FLAGS_LEFT, FLAGS_TOP), flags(options.getMines()), options(options) {
+    FlagCounter(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
+            DigitPanel(imageRepo, renderer, layout.getFlagsDigitPanel()),
+            options(options),
+            layout(layout),
+            flags(options.getMines()) {
 
     }
 
     void setListeners(const std::vector<FlagStateListener *> &v) {
         listeners = v;
+    }
+
+    SDL_Rect getDigitRect(int position) override {
+        return layout.getFlagsDigit(position);
     }
 
     int getDisplayValue() override {
@@ -444,11 +519,6 @@ public:
 
 class Button : public Sprite, public TileListener {
 private:
-    static constexpr int FACE_WIDTH = 42;
-    static constexpr int FACE_HEIGHT = 42;
-    static constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
-    static constexpr int FACE_TOP = 19;
-
     GameState state;
     int revealed;
     const Options &options;
@@ -473,8 +543,8 @@ private:
     }
 
 public:
-    Button(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
-            Sprite(imageRepo, renderer, {FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT}),
+    Button(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
+            Sprite(imageRepo, renderer, layout.getFace()),
             state(GameState::INIT),
             revealed(0),
             options(options) {
@@ -582,13 +652,9 @@ private:
     }
 
 public:
-    Tile(ImageRepo &repo, Renderer &ren, const SDL_Rect &grid, int row, int col, int adjacentMines, bool mine) :
-            Sprite(repo, ren, {
-                    grid.x + col * TILE_SIDE,
-                    grid.y + row * TILE_SIDE,
-                    TILE_SIDE,
-                    TILE_SIDE}),
-            adjacentMines(adjacentMines),
+    Tile(ImageRepo &repo, Renderer &ren, const SDL_Rect boundingBox, int adjMines, bool mine) :
+            Sprite(repo, ren, boundingBox),
+            adjacentMines(adjMines),
             adjacentFlags(0),
             mine(mine),
             flagged(false),
@@ -704,28 +770,19 @@ public:
 
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:
-    static constexpr int GRID_LEFT = 15;
-    static constexpr int GRID_TOP = 81;
-    static constexpr int GRID_WIDTH = 450;
-    static constexpr int GRID_HEIGHT = 240;
-
     Matrix<Tile> tiles;
     MineField mineField;
     const Options &options;
 public:
-    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
-            Sprite(imageRepo, renderer, {
-                    GRID_LEFT + (GRID_WIDTH - options.getColumns() * TILE_SIDE) / 2,
-                    GRID_TOP + (GRID_HEIGHT - options.getRows() * TILE_SIDE) / 2,
-                    options.getColumns() * TILE_SIDE,
-                    options.getRows() * TILE_SIDE}),
+    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
+            Sprite(imageRepo, renderer, layout.getGrid()),
             tiles(options.getRows(), options.getColumns()),
             mineField(options),
             options(options) {
-        auto fn = [&imageRepo, &renderer, this](int r, int c) {
+        auto fn = [&imageRepo, &renderer, &layout, this](int r, int c) {
             int adjMin = mineField.adjacentMines(r, c);
             bool mine = mineField.mineAt(r, c);
-            return Tile{imageRepo, renderer, boundingBox, r, c, adjMin, mine};
+            return Tile{imageRepo, renderer, layout.getTile(boundingBox.x, boundingBox.y, r, c), adjMin, mine};
         };
         tiles.fill(fn);
     }
@@ -741,8 +798,8 @@ public:
     }
 
     void handleClick(SDL_MouseButtonEvent evt) override {
-        int col = (evt.x - boundingBox.x) / TILE_SIDE;
-        int row = (evt.y - boundingBox.y) / TILE_SIDE;
+        int col = (evt.x - boundingBox.x) / Layout::TILE_SIDE;
+        int row = (evt.y - boundingBox.y) / Layout::TILE_SIDE;
         tiles.at(row, col).handleClick(evt);
     }
 
@@ -767,8 +824,8 @@ public:
 
 class Background : public Sprite {
 public:
-    Background(ImageRepo &imageRepo, Renderer &renderer) : Sprite(imageRepo, renderer,
-                                                                  {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT}) {
+    Background(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout)
+            : Sprite(imageRepo, renderer, layout.getBackground()) {
 
     }
 
@@ -801,12 +858,12 @@ private:
     }
 
 public:
-    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options) :
-            background{imageRepo, renderer},
-            timer{imageRepo, renderer},
-            flagCounter{imageRepo, renderer, options},
-            button{imageRepo, renderer, options},
-            grid{imageRepo, renderer, options},
+    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
+            background{imageRepo, renderer, layout},
+            timer{imageRepo, renderer, layout},
+            flagCounter{imageRepo, renderer, options, layout},
+            button{imageRepo, renderer, options, layout},
+            grid{imageRepo, renderer, options, layout},
             renderer(renderer) {
         std::vector<GameStateListener *> gameStateListeners{&grid, &timer, &flagCounter};
         button.setListeners(gameStateListeners);
@@ -850,10 +907,10 @@ private:
 public:
     Window() : win(SDL_CreateWindow(
             "Minesweeper",
-            WINDOW_LEFT,
-            WINDOW_TOP,
-            WINDOW_WIDTH,
-            WINDOW_HEIGHT,
+            Layout::WINDOW_LEFT,
+            Layout::WINDOW_TOP,
+            Layout::WINDOW_WIDTH,
+            Layout::WINDOW_HEIGHT,
             SDL_WINDOW_SHOWN)) {
 
     }
@@ -870,13 +927,14 @@ public:
 int main(int argc, char **argv) {
     char mode = argc > 1 ? *argv[1] : 'e';
     Options options{Options::getOptions(mode)};
+    Layout layout{options.getRows(), options.getColumns()};
 
     SDL_Init(SDL_INIT_VIDEO);
     Window window;
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
 
-    Game game{imageRepo, renderer, options};
+    Game game{imageRepo, renderer, options, layout};
     game.run();
 
     SDL_Quit();
