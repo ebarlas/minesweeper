@@ -99,12 +99,36 @@ public:
     }
 };
 
+class Texture {
+private:
+    SDL_Renderer *ren;
+    SDL_Texture *texture;
+public:
+    Texture() : Texture(nullptr, nullptr) {
+
+    }
+
+    Texture(SDL_Renderer *ren, SDL_Texture *texture) : ren(ren), texture(texture) {
+
+    }
+
+    ~Texture() {
+        SDL_DestroyTexture(texture);
+    }
+
+    void render(SDL_Rect *rect) {
+        SDL_RenderCopy(ren, texture, nullptr, rect);
+    }
+};
+
+using TexturePtr = std::shared_ptr<Texture>;
+
 class ImageRepo {
 private:
     SDL_Renderer *ren;
     const char *dir;
 
-    std::map<std::string, SDL_Texture *> images;
+    std::map<std::string, TexturePtr> images;
 
     SDL_Texture *load(const char *name) {
         std::string file{dir};
@@ -116,9 +140,9 @@ private:
         return texture;
     }
 
-    SDL_Texture *get(const char *name) {
-        SDL_Texture *image = images[name];
-        return image ? image : images[name] = load(name);
+    TexturePtr get(const char *name) {
+        auto it = images.find(name);
+        return it != images.end() ? it->second : images[name] = std::make_shared<Texture>(ren, load(name));
     }
 
 public:
@@ -126,20 +150,15 @@ public:
 
     }
 
-    ~ImageRepo() {
-        for (auto &entry : images)
-            SDL_DestroyTexture(entry.second);
-    }
-
-    SDL_Texture *getBackground() {
+    TexturePtr getBackground() {
         return get("minesweeper_bg");
     }
 
-    SDL_Texture *getDigitPanel() {
+    TexturePtr getDigitPanel() {
         return get("minesweeper_digit_panel");
     }
 
-    SDL_Texture *getDigit(int digit) {
+    TexturePtr getDigit(int digit) {
         switch (digit) {
             case 1:
                 return get("minesweeper_digit_one");
@@ -164,31 +183,31 @@ public:
         }
     }
 
-    SDL_Texture *getFacePlaying() {
+    TexturePtr getFacePlaying() {
         return get("minesweeper_face_playing");
     }
 
-    SDL_Texture *getFaceWin() {
+    TexturePtr getFaceWin() {
         return get("minesweeper_face_win");
     }
 
-    SDL_Texture *getFaceLose() {
+    TexturePtr getFaceLose() {
         return get("minesweeper_face_lose");
     }
 
-    SDL_Texture *getTileFlag() {
+    TexturePtr getTileFlag() {
         return get("minesweeper_tile_flag");
     }
 
-    SDL_Texture *getTileMine() {
+    TexturePtr getTileMine() {
         return get("minesweeper_tile_mine");
     }
 
-    SDL_Texture *getTile() {
+    TexturePtr getTile() {
         return get("minesweeper_tile");
     }
 
-    SDL_Texture *getTile(int num) {
+    TexturePtr getTile(int num) {
         switch (num) {
             case 1:
                 return get("minesweeper_tile_one");
@@ -226,10 +245,6 @@ public:
 
     ImageRepo createImageRepo(const char *dir) {
         return ImageRepo{ren, dir};
-    }
-
-    void render(SDL_Texture *texture, SDL_Rect *rect = nullptr) {
-        SDL_RenderCopy(ren, texture, nullptr, rect);
     }
 
     void repaint() {
@@ -296,7 +311,7 @@ protected:
 
 public:
     void render() override {
-        renderer.render(imageRepo.getDigitPanel(), &boundingBox);
+        imageRepo.getDigitPanel()->render(&boundingBox);
 
         int value = getDisplayValue();
         int onesDigit = value % 10;
@@ -304,13 +319,13 @@ public:
         int hundredsDigit = (value / 100) % 10;
 
         SDL_Rect rect = getDigitRect(0);
-        renderer.render(imageRepo.getDigit(hundredsDigit), &rect);
+        imageRepo.getDigit(hundredsDigit)->render(&rect);
 
         rect = getDigitRect(1);
-        renderer.render(imageRepo.getDigit(tensDigit), &rect);
+        imageRepo.getDigit(tensDigit)->render(&rect);
 
         rect = getDigitRect(2);
-        renderer.render(imageRepo.getDigit(onesDigit), &rect);
+        imageRepo.getDigit(onesDigit)->render(&rect);
     }
 
     virtual int getDisplayValue() = 0;
@@ -440,7 +455,7 @@ private:
 
     std::vector<GameStateListener *> listeners;
 
-    SDL_Texture *getFaceImage() {
+    TexturePtr getFaceImage() {
         switch (state) {
             case GameState::INIT:
             case GameState::PLAYING:
@@ -494,7 +509,7 @@ public:
     }
 
     void render() override {
-        renderer.render(getFaceImage(), &boundingBox);
+        getFaceImage()->render(&boundingBox);
     }
 };
 
@@ -642,14 +657,14 @@ public:
     void render() override {
         if (revealed) {
             if (mine) {
-                renderer.render(imageRepo.getTileMine(), &boundingBox);
+                imageRepo.getTileMine()->render(&boundingBox);
             } else {
-                renderer.render(imageRepo.getTile(adjacentMines), &boundingBox);
+                imageRepo.getTile(adjacentMines)->render(&boundingBox);
             }
         } else if (flagged) {
-            renderer.render(imageRepo.getTileFlag(), &boundingBox);
+            imageRepo.getTileFlag()->render(&boundingBox);
         } else {
-            renderer.render(imageRepo.getTile(), &boundingBox);
+            imageRepo.getTile()->render(&boundingBox);
         }
     }
 };
@@ -740,7 +755,7 @@ public:
     }
 
     void render() override {
-        renderer.render(imageRepo.getBackground());
+        imageRepo.getBackground()->render(&boundingBox);
     }
 };
 
