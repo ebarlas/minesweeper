@@ -16,23 +16,23 @@ public:
 
     }
 
-    int getTiles() const {
+    [[nodiscard]] int getTiles() const {
         return rows * columns;
     }
 
-    int getMines() const {
+    [[nodiscard]] int getMines() const {
         return mines;
     }
 
-    int getBlanks() const {
+    [[nodiscard]] int getBlanks() const {
         return getTiles() - mines;
     }
 
-    int getRows() const {
+    [[nodiscard]] int getRows() const {
         return rows;
     }
 
-    int getColumns() const {
+    [[nodiscard]] int getColumns() const {
         return columns;
     }
 
@@ -99,19 +99,19 @@ public:
 
     }
 
-    SDL_Rect getDigitPanel(int left, int top) const {
+    [[nodiscard]] SDL_Rect getDigitPanel(int left, int top) const {
         return {left, top, DIGIT_PANEL_WIDTH, DIGIT_PANEL_HEIGHT};
     }
 
-    SDL_Rect getFlagsDigitPanel() const {
+    [[nodiscard]] SDL_Rect getFlagsDigitPanel() const {
         return getDigitPanel(FLAGS_LEFT, FLAGS_TOP);
     }
 
-    SDL_Rect getTimerDigitPanel() const {
+    [[nodiscard]] SDL_Rect getTimerDigitPanel() const {
         return getDigitPanel(TIMER_LEFT, TIMER_TOP);
     }
 
-    SDL_Rect getDigit(int left, int top, int position) const {
+    [[nodiscard]] SDL_Rect getDigit(int left, int top, int position) const {
         return {
                 left + DIGIT_PANEL_HORZ_MARGIN * (position + 1) + DIGIT_WIDTH * position,
                 top + DIGIT_PANEL_VERT_MARGIN,
@@ -119,23 +119,23 @@ public:
                 DIGIT_HEIGHT};
     }
 
-    SDL_Rect getFlagsDigit(int position) const {
+    [[nodiscard]] SDL_Rect getFlagsDigit(int position) const {
         return getDigit(FLAGS_LEFT, FLAGS_TOP, position);
     }
 
-    SDL_Rect getTimerDigit(int position) const {
+    [[nodiscard]] SDL_Rect getTimerDigit(int position) const {
         return getDigit(TIMER_LEFT, TIMER_TOP, position);
     }
 
-    SDL_Rect getFace() const {
+    [[nodiscard]] SDL_Rect getFace() const {
         return {FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT};
     }
 
-    SDL_Rect getTile(int gridX, int gridY, int row, int col) const {
+    [[nodiscard]] SDL_Rect getTile(int gridX, int gridY, int row, int col) const {
         return {gridX + col * TILE_SIDE, gridY + row * TILE_SIDE, TILE_SIDE, TILE_SIDE};
     }
 
-    SDL_Rect getGrid() const {
+    [[nodiscard]] SDL_Rect getGrid() const {
         return {
                 GRID_LEFT + (GRID_WIDTH - columns * TILE_SIDE) / 2,
                 GRID_TOP + (GRID_HEIGHT - rows * TILE_SIDE) / 2,
@@ -143,7 +143,7 @@ public:
                 rows * TILE_SIDE};
     }
 
-    SDL_Rect getBackground() const {
+    [[nodiscard]] SDL_Rect getBackground() const {
         return {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
     }
 };
@@ -161,7 +161,7 @@ public:
         start = clock_t::now();
     }
 
-    double elapsed() const {
+    [[nodiscard]] double elapsed() const {
         return std::chrono::duration_cast<second_t>(clock_t::now() - start).count();
     }
 };
@@ -316,7 +316,8 @@ class Renderer {
 private:
     SDL_Renderer *ren;
 public:
-    Renderer(SDL_Window *win) : ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) {
+    explicit Renderer(SDL_Window *win)
+            : ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) {
 
     }
 
@@ -366,7 +367,11 @@ public:
     virtual void handleClick(SDL_MouseButtonEvent evt) {
 
     }
+
+    virtual ~Sprite() = default;
 };
+
+using SpritePtr = std::shared_ptr<Sprite>;
 
 class DigitPanel : public Sprite {
 protected:
@@ -409,7 +414,12 @@ enum class GameState {
 class GameStateListener {
 public:
     virtual void onStateChange(GameState state) = 0;
+
+    virtual ~GameStateListener() = default;
 };
+
+using GameStateListenerPtr = std::shared_ptr<GameStateListener>;
+using GameStateListenerWPtr = std::weak_ptr<GameStateListener>;
 
 class Timer : public DigitPanel, public GameStateListener {
 private:
@@ -445,6 +455,8 @@ public:
     }
 };
 
+using TimerPtr = std::shared_ptr<Timer>;
+
 class TileListener {
 public:
     virtual void onReveal(bool mine, bool adjacentMines) {
@@ -460,10 +472,18 @@ public:
     }
 };
 
+using TileListenerPtr = std::shared_ptr<TileListener>;
+using TileListenerWPtr = std::weak_ptr<TileListener>;
+
 class FlagStateListener {
 public:
     virtual void onFlagStateChange(bool exhausted) = 0;
+
+    virtual ~FlagStateListener() = default;
 };
+
+using FlagStateListenerPtr = std::shared_ptr<FlagStateListener>;
+using FlagStateListenerWPtr = std::weak_ptr<FlagStateListener>;
 
 class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
 private:
@@ -471,11 +491,12 @@ private:
     const Layout &layout;
     int flags;
 
-    std::vector<FlagStateListener *> listeners;
+    std::vector<FlagStateListenerWPtr> listeners;
 
     void notifyListeners(bool exhausted) {
-        for (auto listener : listeners)
-            listener->onFlagStateChange(exhausted);
+        for (auto &listener : listeners)
+            if (auto spt = listener.lock())
+                spt->onFlagStateChange(exhausted);
     }
 
 public:
@@ -487,7 +508,7 @@ public:
 
     }
 
-    void setListeners(const std::vector<FlagStateListener *> &v) {
+    void setListeners(const std::vector<FlagStateListenerWPtr> &v) {
         listeners = v;
     }
 
@@ -517,13 +538,15 @@ public:
     }
 };
 
+using FlagCounterPtr = std::shared_ptr<FlagCounter>;
+
 class Button : public Sprite, public TileListener {
 private:
     GameState state;
     int revealed;
     const Options &options;
 
-    std::vector<GameStateListener *> listeners;
+    std::vector<GameStateListenerWPtr> listeners;
 
     TexturePtr getFaceImage() {
         switch (state) {
@@ -538,8 +561,9 @@ private:
     }
 
     void notifyListeners() {
-        for (auto listener : listeners)
-            listener->onStateChange(state);
+        for (auto &listener : listeners)
+            if (auto spt = listener.lock())
+                spt->onStateChange(state);
     }
 
 public:
@@ -551,7 +575,7 @@ public:
 
     }
 
-    void setListeners(const std::vector<GameStateListener *> &v) {
+    void setListeners(const std::vector<GameStateListenerWPtr> &v) {
         listeners = v;
     }
 
@@ -583,13 +607,15 @@ public:
     }
 };
 
+using ButtonPtr = std::shared_ptr<Button>;
+
 class MineField {
 private:
     Random random;
     std::set<int> mines;
     const Options &options;
 public:
-    MineField(const Options &options) : options(options) {
+    explicit MineField(const Options &options) : options(options) {
         reset();
     }
 
@@ -625,14 +651,15 @@ private:
     bool gameOver;
     bool flagRemaining;
 
-    std::vector<TileListener *> listeners;
+    std::vector<TileListenerWPtr> listeners;
 
     void tryReveal() {
         if (gameOver || flagged || revealed)
             return;
         revealed = true;
-        for (auto listener : listeners)
-            listener->onReveal(mine, adjacentMines > 0);
+        for (auto &listener : listeners)
+            if (auto spt = listener.lock())
+                spt->onReveal(mine, adjacentMines > 0);
     }
 
     void tryToggleFlag() {
@@ -641,14 +668,16 @@ private:
         if (!flagged && !flagRemaining)
             return;
         flagged = !flagged;
-        for (auto listener : listeners)
-            listener->onFlag(flagged);
+        for (auto &listener : listeners)
+            if (auto spt = listener.lock())
+                spt->onFlag(flagged);
     }
 
     void tryClear() {
         if (adjacentFlags == adjacentMines)
-            for (auto listener : listeners)
-                listener->onClear();
+            for (auto &listener : listeners)
+                if (auto spt = listener.lock())
+                    spt->onClear();
     }
 
 public:
@@ -664,7 +693,7 @@ public:
 
     }
 
-    void setListeners(const std::vector<TileListener *> &v) {
+    void setListeners(const std::vector<TileListenerWPtr> &v) {
         listeners = v;
     }
 
@@ -735,6 +764,9 @@ public:
     }
 };
 
+using TilePtr = std::shared_ptr<Tile>;
+using TileWPtr = std::weak_ptr<Tile>;
+
 template<typename T>
 class Matrix {
 private:
@@ -742,21 +774,13 @@ private:
     int columns;
     std::vector<T> matrix;
 public:
-    Matrix(int rows, int columns) : rows(rows), columns(columns) {
-        matrix.reserve(rows * columns);
+    Matrix(int rows, int columns, const T &value) : rows(rows), columns(columns), matrix(rows * columns, value) {
+
     }
 
     T &at(int row, int col) {
         int n = row * columns + col;
         return matrix[n];
-    }
-
-    void fill(std::function<T(int row, int col)> fn) {
-        for (int r = 0; r < rows; r++) {
-            for (int c = 0; c < columns; c++) {
-                matrix.emplace_back(fn(r, c));
-            }
-        }
     }
 
     void forEach(std::function<void(int row, int col, T &val)> fn) {
@@ -770,30 +794,30 @@ public:
 
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:
-    Matrix<Tile> tiles;
+    Matrix<TilePtr> tiles;
     MineField mineField;
     const Options &options;
 public:
     Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
             Sprite(imageRepo, renderer, layout.getGrid()),
-            tiles(options.getRows(), options.getColumns()),
+            tiles{options.getRows(), options.getColumns(), TilePtr()},
             mineField(options),
             options(options) {
-        auto fn = [&imageRepo, &renderer, &layout, this](int r, int c) {
+        auto fn = [&imageRepo, &renderer, &layout, this](int r, int c, TilePtr &t) {
             int adjacentMines = mineField.adjacentMines(r, c);
             bool mine = mineField.mineAt(r, c);
             SDL_Rect rect = layout.getTile(boundingBox.x, boundingBox.y, r, c);
-            return Tile{imageRepo, renderer, rect, adjacentMines, mine};
+            t = std::make_shared<Tile>(imageRepo, renderer, rect, adjacentMines, mine);
         };
-        tiles.fill(fn);
+        tiles.forEach(fn);
     }
 
-    void setListeners(const std::vector<TileListener *> &v) {
-        auto fe = [&v, this](int r, int c, Tile &t) {
-            std::vector<TileListener *> listeners = v;
-            auto fn = [&listeners, this](int r, int c) { listeners.push_back(&tiles.at(r, c)); };
+    void setListeners(const std::vector<TileListenerWPtr> &v) {
+        auto fe = [&v, this](int r, int c, TilePtr &t) {
+            std::vector<TileListenerWPtr> listeners = v;
+            auto fn = [&listeners, this](int r, int c) { listeners.push_back(tiles.at(r, c)); };
             options.forEachNeighbor(r, c, fn);
-            t.setListeners(listeners);
+            t->setListeners(listeners);
         };
         tiles.forEach(fe);
     }
@@ -801,27 +825,31 @@ public:
     void handleClick(SDL_MouseButtonEvent evt) override {
         int col = (evt.x - boundingBox.x) / Layout::TILE_SIDE;
         int row = (evt.y - boundingBox.y) / Layout::TILE_SIDE;
-        tiles.at(row, col).handleClick(evt);
+        tiles.at(row, col)->handleClick(evt);
     }
 
     void onFlagStateChange(bool exhausted) override {
-        tiles.forEach([exhausted](int r, int c, Tile &t) { t.onFlagStateChange(exhausted); });
+        tiles.forEach([exhausted](int r, int c, std::shared_ptr<Tile> &t) { t->onFlagStateChange(exhausted); });
     }
 
     void onStateChange(GameState state) override {
         if (state == GameState::INIT) {
             mineField.reset();
-            auto fn = [this](int r, int c, Tile &t) { t.reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c)); };
+            auto fn = [this](int r, int c, TilePtr &t) {
+                t->reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c));
+            };
             tiles.forEach(fn);
         }
 
-        tiles.forEach([state](int r, int c, Tile &t) { t.onStateChange(state); });
+        tiles.forEach([state](int r, int c, std::shared_ptr<Tile> &t) { t->onStateChange(state); });
     }
 
     void render() override {
-        tiles.forEach([](int r, int c, Tile &t) { t.render(); });
+        tiles.forEach([](int r, int c, TilePtr &t) { t->render(); });
     }
 };
+
+using GridPtr = std::shared_ptr<Grid>;
 
 class Background : public Sprite {
 public:
@@ -835,51 +863,46 @@ public:
     }
 };
 
+using BackgroundPtr = std::shared_ptr<Background>;
+
 class Game {
 private:
-    Background background;
-    Timer timer;
-    FlagCounter flagCounter;
-    Button button;
-    Grid grid;
-
     Renderer &renderer;
-
-    std::vector<Sprite *> sprites;
+    std::vector<SpritePtr> sprites;
 
     void onClick(SDL_MouseButtonEvent evt) {
-        for (auto sprite : sprites)
+        for (auto &sprite : sprites)
             sprite->onClick(evt);
     }
 
     void render() {
-        for (auto sprite : sprites)
+        for (auto &sprite : sprites)
             sprite->render();
         renderer.repaint();
     }
 
 public:
-    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
-            background{imageRepo, renderer, layout},
-            timer{imageRepo, renderer, layout},
-            flagCounter{imageRepo, renderer, options, layout},
-            button{imageRepo, renderer, options, layout},
-            grid{imageRepo, renderer, options, layout},
-            renderer(renderer) {
-        std::vector<GameStateListener *> gameStateListeners{&grid, &timer, &flagCounter};
-        button.setListeners(gameStateListeners);
+    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) : renderer(renderer) {
+        BackgroundPtr background{std::make_shared<Background>(imageRepo, renderer, layout)};
+        TimerPtr timer{std::make_shared<Timer>(imageRepo, renderer, layout)};
+        FlagCounterPtr flagCounter{std::make_shared<FlagCounter>(imageRepo, renderer, options, layout)};
+        ButtonPtr button{std::make_shared<Button>(imageRepo, renderer, options, layout)};
+        GridPtr grid{std::make_shared<Grid>(imageRepo, renderer, options, layout)};
 
-        std::vector<TileListener *> tileRevealListeners{&button, &flagCounter};
-        grid.setListeners(tileRevealListeners);
+        std::vector<GameStateListenerWPtr> gameStateListeners{grid, timer, flagCounter};
+        button->setListeners(gameStateListeners);
 
-        std::vector<FlagStateListener *> flagStateListeners{&grid};
-        flagCounter.setListeners(flagStateListeners);
+        std::vector<TileListenerWPtr> tileRevealListeners{button, flagCounter};
+        grid->setListeners(tileRevealListeners);
 
-        sprites.push_back(&background);
-        sprites.push_back(&timer);
-        sprites.push_back(&flagCounter);
-        sprites.push_back(&button);
-        sprites.push_back(&grid);
+        std::vector<FlagStateListenerWPtr> flagStateListeners{grid};
+        flagCounter->setListeners(flagStateListeners);
+
+        sprites.push_back(background);
+        sprites.push_back(timer);
+        sprites.push_back(flagCounter);
+        sprites.push_back(button);
+        sprites.push_back(grid);
     }
 
     void run() {
