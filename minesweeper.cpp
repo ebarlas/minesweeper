@@ -4,6 +4,7 @@
 #include <vector>
 #include <random>
 #include <set>
+#include <functional>
 #include "SDL.h"
 
 class Options {
