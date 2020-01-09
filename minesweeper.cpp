@@ -955,7 +955,11 @@ int main(int argc, char **argv) {
     Options options{Options::getOptions(mode)};
     Layout layout{options.getRows(), options.getColumns()};
 
-    SDL_Init(SDL_INIT_VIDEO);
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
+        return 1;
+    }
+
     Window window;
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
