@@ -5,6 +5,7 @@
 #include <random>
 #include <set>
 #include <functional>
+#include <memory>
 #include "SDL.h"
 
 class Options {
