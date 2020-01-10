@@ -25,9 +25,24 @@ make
 
 # Run
 
-Run minesweeper!
+Run minesweeper (expert mode):
 ```$bash
 ./minesweeper
+```
+
+Run in beginner mode:
+```$bash
+./minesweeper b
+```
+
+Run in intermediat mode:
+```$bash
+./minesweeper i
+```
+
+Run in expert mode:
+```$bash
+./minesweeper e
 ```
 
 # Screenshot
