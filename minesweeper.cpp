@@ -8,6 +8,9 @@
 #include <memory>
 #include "SDL.h"
 
+#include "SDL2/framework/IWindow.h"
+#include "SDL2/framework/IRenderer.h"
+
 class Mode {
 public:
     enum Enum {
@@ -985,6 +988,7 @@ public:
     }
 };
 
+
 int main(int argc, char **argv) {
     Mode::Enum mode = Mode::parse(argc > 1 ? *argv[1] : 'e');
     Options options{Options::getOptions(mode)};
@@ -994,6 +998,15 @@ int main(int argc, char **argv) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
         return 1;
     }
+#if 0
+    auto w = sdl::IWindow::create("Minesweeper",
+                                  {Layout::WINDOW_LEFT,
+                                   Layout::WINDOW_TOP,
+                                   Layout::WINDOW_WIDTH,
+                                   Layout::WINDOW_HEIGHT},
+                                  SDL_WINDOW_SHOWN);
+    auto r = w->createRenderer();
+#endif
 
     Window window{layout, mode};
     Renderer renderer{window.createRenderer()};

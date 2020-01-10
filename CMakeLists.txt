@@ -6,5 +6,21 @@ include_directories(${SDL2_INCLUDE_DIRS})
 
 set(CMAKE_CXX_STANDARD 17)
 
-add_executable(minesweeper minesweeper.cpp)
+set(SDL2Framework
+    SDL2/framework/IWindow.h
+    SDL2/framework/IRenderer.h
+    )
+set(SDL2Detail
+    SDL2/detail/SDLWrapper.h
+    SDL2/detail/SDLWrapper.cpp
+    SDL2/detail/Window.h
+    SDL2/detail/Window.cpp
+    SDL2/detail/Renderer.h
+    SDL2/detail/Renderer.cpp
+    )
+
+add_executable(minesweeper minesweeper.cpp
+    ${SDL2Framework}
+    ${SDL2Detail}
+    )
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})
