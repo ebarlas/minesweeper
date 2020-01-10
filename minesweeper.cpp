@@ -8,6 +8,26 @@
 #include <memory>
 #include "SDL.h"
 
+class Mode {
+public:
+    enum Enum {
+        BEGINNER,
+        INTERMEDIATE,
+        EXPERT
+    };
+
+    static Mode::Enum parse(const char mode) {
+        switch (mode) {
+            case 'b':
+                return BEGINNER;
+            case 'i':
+                return INTERMEDIATE;
+            default:
+                return EXPERT;
+        }
+    }
+};
+
 class Options {
 private:
     const int rows;
@@ -50,11 +70,11 @@ public:
         }
     }
 
-    static Options getOptions(char c) {
-        switch (c) {
-            case 'b':
+    static Options getOptions(const Mode::Enum mode) {
+        switch (mode) {
+            case Mode::BEGINNER:
                 return Options{9, 9, 10};
-            case 'i':
+            case Mode::INTERMEDIATE:
                 return Options{16, 16, 40};
             default:
                 return Options{16, 30, 99};
@@ -63,13 +83,16 @@ public:
 };
 
 class Layout {
-public:
-    static constexpr int WINDOW_WIDTH = 480;
-    static constexpr int WINDOW_HEIGHT = 336;
+private:
+    static constexpr int ROWS[]{9, 16, 16};
+    static constexpr int COLUMNS[]{9, 16, 30};
+
+    static constexpr int WINDOW_WIDTH[]{210, 350, 630};
+    static constexpr int WINDOW_HEIGHT[]{276, 416, 416};
     static constexpr int WINDOW_LEFT = 100;
     static constexpr int WINDOW_TOP = 100;
 
-    static constexpr int TILE_SIDE = 15;
+    static constexpr int TILE_SIDE = 20;
 
     static constexpr int DIGIT_PANEL_WIDTH = 65;
     static constexpr int DIGIT_PANEL_HEIGHT = 37;
@@ -78,27 +101,27 @@ public:
     static constexpr int DIGIT_PANEL_HORZ_MARGIN = (DIGIT_PANEL_WIDTH - (3 * DIGIT_WIDTH)) / 4;
     static constexpr int DIGIT_PANEL_VERT_MARGIN = (DIGIT_PANEL_HEIGHT - DIGIT_HEIGHT) / 2;
 
-    static constexpr int TIMER_LEFT = WINDOW_WIDTH - 25 - DIGIT_PANEL_WIDTH;
+    static constexpr int DIGIT_PANEL_OFFSET[]{16, 20, 20};
+
     static constexpr int TIMER_TOP = 21;
 
-    static constexpr int FLAGS_LEFT = 25;
     static constexpr int FLAGS_TOP = 21;
 
     static constexpr int FACE_WIDTH = 42;
     static constexpr int FACE_HEIGHT = 42;
-    static constexpr int FACE_LEFT = WINDOW_WIDTH / 2 - FACE_WIDTH / 2;
     static constexpr int FACE_TOP = 19;
 
     static constexpr int GRID_LEFT = 15;
     static constexpr int GRID_TOP = 81;
-    static constexpr int GRID_WIDTH = 450;
-    static constexpr int GRID_HEIGHT = 240;
 
-    const int rows;
-    const int columns;
+    const Mode::Enum mode;
+public:
+    explicit Layout(const Mode::Enum mode) : mode(mode) {
 
-    Layout(const int rows, const int columns) : rows(rows), columns(columns) {
+    }
 
+    static int getTileSide() {
+        return TILE_SIDE;
     }
 
     [[nodiscard]] SDL_Rect getDigitPanel(int left, int top) const {
@@ -106,11 +129,11 @@ public:
     }
 
     [[nodiscard]] SDL_Rect getFlagsDigitPanel() const {
-        return getDigitPanel(FLAGS_LEFT, FLAGS_TOP);
+        return getDigitPanel(DIGIT_PANEL_OFFSET[mode], FLAGS_TOP);
     }
 
     [[nodiscard]] SDL_Rect getTimerDigitPanel() const {
-        return getDigitPanel(TIMER_LEFT, TIMER_TOP);
+        return getDigitPanel(WINDOW_WIDTH[mode] - DIGIT_PANEL_OFFSET[mode] - DIGIT_PANEL_WIDTH, TIMER_TOP);
     }
 
     [[nodiscard]] SDL_Rect getDigit(int left, int top, int position) const {
@@ -122,15 +145,15 @@ public:
     }
 
     [[nodiscard]] SDL_Rect getFlagsDigit(int position) const {
-        return getDigit(FLAGS_LEFT, FLAGS_TOP, position);
+        return getDigit(DIGIT_PANEL_OFFSET[mode], FLAGS_TOP, position);
     }
 
     [[nodiscard]] SDL_Rect getTimerDigit(int position) const {
-        return getDigit(TIMER_LEFT, TIMER_TOP, position);
+        return getDigit(WINDOW_WIDTH[mode] - DIGIT_PANEL_OFFSET[mode] - DIGIT_PANEL_WIDTH, TIMER_TOP, position);
     }
 
     [[nodiscard]] SDL_Rect getFace() const {
-        return {FACE_LEFT, FACE_TOP, FACE_WIDTH, FACE_HEIGHT};
+        return {WINDOW_WIDTH[mode] / 2 - FACE_WIDTH / 2, FACE_TOP, FACE_WIDTH, FACE_HEIGHT};
     }
 
     [[nodiscard]] SDL_Rect getTile(int gridX, int gridY, int row, int col) const {
@@ -139,14 +162,18 @@ public:
 
     [[nodiscard]] SDL_Rect getGrid() const {
         return {
-                GRID_LEFT + (GRID_WIDTH - columns * TILE_SIDE) / 2,
-                GRID_TOP + (GRID_HEIGHT - rows * TILE_SIDE) / 2,
-                columns * TILE_SIDE,
-                rows * TILE_SIDE};
+                GRID_LEFT,
+                GRID_TOP,
+                COLUMNS[mode] * TILE_SIDE,
+                ROWS[mode] * TILE_SIDE};
     }
 
     [[nodiscard]] SDL_Rect getBackground() const {
-        return {0, 0, WINDOW_WIDTH, WINDOW_HEIGHT};
+        return {0, 0, WINDOW_WIDTH[mode], WINDOW_HEIGHT[mode]};
+    }
+
+    [[nodiscard]] SDL_Rect getWindow() const {
+        return {WINDOW_LEFT, WINDOW_TOP, WINDOW_WIDTH[mode], WINDOW_HEIGHT[mode]};
     }
 };
 
@@ -210,6 +237,7 @@ class ImageRepo {
 private:
     SDL_Renderer *ren;
     const char *dir;
+    const Mode::Enum mode;
 
     std::map<std::string, TexturePtr> images;
 
@@ -229,12 +257,19 @@ private:
     }
 
 public:
-    ImageRepo(SDL_Renderer *ren, const char *dir) : ren(ren), dir(dir) {
+    ImageRepo(SDL_Renderer *ren, const char *dir, const Mode::Enum mode) : ren(ren), dir(dir), mode(mode) {
 
     }
 
     TexturePtr getBackground() {
-        return get("minesweeper_bg");
+        switch (mode) {
+            case Mode::BEGINNER:
+                return get("minesweeper_bg_beginner");
+            case Mode::INTERMEDIATE:
+                return get("minesweeper_bg_intermediate");
+            default:
+                return get("minesweeper_bg_expert");
+        }
     }
 
     TexturePtr getDigitPanel() {
@@ -317,10 +352,12 @@ public:
 class Renderer {
 private:
     SDL_Renderer *ren;
+    const Mode::Enum mode;
 public:
-    explicit Renderer(SDL_Window *win)
-            : ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) {
-        if(ren == nullptr) {
+    explicit Renderer(SDL_Window *win, const Mode::Enum mode) :
+            ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)),
+            mode(mode) {
+        if (ren == nullptr) {
             ren = SDL_CreateRenderer(win, -1, 0);
         }
     }
@@ -330,7 +367,7 @@ public:
     }
 
     ImageRepo createImageRepo(const char *dir) {
-        return ImageRepo{ren, dir};
+        return ImageRepo{ren, dir, mode};
     }
 
     void repaint() {
@@ -827,8 +864,8 @@ public:
     }
 
     void handleClick(SDL_MouseButtonEvent evt) override {
-        int col = (evt.x - boundingBox.x) / Layout::TILE_SIDE;
-        int row = (evt.y - boundingBox.y) / Layout::TILE_SIDE;
+        int col = (evt.x - boundingBox.x) / Layout::getTileSide();
+        int row = (evt.y - boundingBox.y) / Layout::getTileSide();
         tiles.at(row, col)->handleClick(evt);
     }
 
@@ -932,15 +969,11 @@ public:
 class Window {
 private:
     SDL_Window *win;
+    const Mode::Enum mode;
 public:
-    Window() : win(SDL_CreateWindow(
-            "Minesweeper",
-            Layout::WINDOW_LEFT,
-            Layout::WINDOW_TOP,
-            Layout::WINDOW_WIDTH,
-            Layout::WINDOW_HEIGHT,
-            SDL_WINDOW_SHOWN)) {
-
+    Window(const Layout &layout, const Mode::Enum mode) : mode(mode) {
+        SDL_Rect rect = layout.getWindow();
+        win = SDL_CreateWindow("Minesweeper", rect.x, rect.y, rect.w, rect.h, SDL_WINDOW_SHOWN);
     }
 
     ~Window() {
@@ -948,21 +981,21 @@ public:
     }
 
     Renderer createRenderer() {
-        return Renderer{win};
+        return Renderer{win, mode};
     }
 };
 
 int main(int argc, char **argv) {
-    char mode = argc > 1 ? *argv[1] : 'e';
+    Mode::Enum mode = Mode::parse(argc > 1 ? *argv[1] : 'e');
     Options options{Options::getOptions(mode)};
-    Layout layout{options.getRows(), options.getColumns()};
+    Layout layout{mode};
 
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
         return 1;
     }
 
-    Window window;
+    Window window{layout, mode};
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
 
