@@ -35,7 +35,7 @@ Run in beginner mode:
 ./minesweeper b
 ```
 
-Run in intermediat mode:
+Run in intermediate mode:
 ```$bash
 ./minesweeper i
 ```
