@@ -17,9 +17,9 @@ Window::Window(const std::string &name, const SDL_Rect &frame, unsigned flags)
 IRendererPtr Window::createRenderer() const
 {
     constexpr unsigned flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
-    auto r = SDL_CreateRenderer(get(), -1, flags);
+    auto r = SDL_CreateRenderer(getsdl(), -1, flags);
     if (r == nullptr)
-        r = SDL_CreateRenderer(get(), -1, 0);
+        r = SDL_CreateRenderer(getsdl(), -1, 0);
     return std::make_shared<Renderer>(r);
 }
 

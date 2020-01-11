@@ -7,10 +7,14 @@ namespace sdl {
 // free functions
 void SDLRelease(SDL_Window *window);
 void SDLRelease(SDL_Renderer *renderer);
+void SDLRelease(SDL_Texture *texture);
 
 template<bool Destroy, typename T>
 class ConditionalWrapper
 {
+public:
+    T *getsdl() const { return _obj; }
+
 protected:
     ConditionalWrapper() = default;
     explicit ConditionalWrapper(T *obj) : _obj(obj) {}
@@ -20,7 +24,6 @@ protected:
             sdl::SDLRelease(_obj);
     }
 
-    T *get() const { return _obj; }
     T *swap(T *replacement)
     {
         auto swap = _obj;

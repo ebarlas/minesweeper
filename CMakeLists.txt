@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(SDL2Framework
     SDL2/framework/IWindow.h
     SDL2/framework/IRenderer.h
+    SDL2/framework/IImageRepo.h
+    SDL2/framework/ITexture.h
     )
 set(SDL2Detail
     SDL2/detail/SDLWrapper.h
@@ -17,6 +19,10 @@ set(SDL2Detail
     SDL2/detail/Window.cpp
     SDL2/detail/Renderer.h
     SDL2/detail/Renderer.cpp
+    SDL2/detail/ImageRepo.h
+    SDL2/detail/ImageRepo.cpp
+    SDL2/detail/Texture.h
+    SDL2/detail/Texture.cpp
     )
 
 add_executable(minesweeper minesweeper.cpp

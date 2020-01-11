@@ -4,7 +4,7 @@
 
 namespace sdl {
 
-class Window : public IWindow, protected Wrapper<SDL_Window>
+class Window : public IWindow, public Wrapper<SDL_Window>
 {
 public:
     explicit Window(SDL_Window *window) : Wrapper<SDL_Window>(window) {}

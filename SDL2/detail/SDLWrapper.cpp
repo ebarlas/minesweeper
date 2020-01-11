@@ -14,4 +14,9 @@ void SDLRelease(SDL_Renderer *renderer)
     SDL_DestroyRenderer(renderer);
 }
 
+void SDLRelease(SDL_Texture *texture)
+{
+    SDL_DestroyTexture(texture);
+}
+
 } // namespace sdl
