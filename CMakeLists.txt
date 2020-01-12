@@ -25,7 +25,19 @@ set(SDL2Detail
     SDL2/detail/Texture.cpp
     )
 
-add_executable(minesweeper minesweeper.cpp
+add_executable(minesweeper
+    minesweeper.cpp
+    NewMinesweeper.cpp
+    GameContext.h
+    DigitalPanel.h
+    Layout.h
+    Layout.cpp
+    Mode.h
+    Mode.cpp
+    Options.h
+    Options.cpp
+    Sprite.h
+    Sprite.cpp
     ${SDL2Framework}
     ${SDL2Detail}
     )

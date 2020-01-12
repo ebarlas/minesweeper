@@ -8,11 +8,6 @@
 #include <memory>
 #include "SDL.h"
 
-#include "SDL2/framework/IWindow.h"
-#include "SDL2/framework/IRenderer.h"
-#include "SDL2/framework/IImageRepo.h"
-#include "SDL2/framework/ITexture.h"
-
 class Mode {
 public:
     enum Enum {
@@ -990,191 +985,7 @@ public:
     }
 };
 
-namespace minesweeper {
-class Context
-{
-public:
-    sdl::IWindowPtr window;
-    sdl::IRendererPtr renderer;
-    sdl::IImageRepoPtr imageRepo;
-    Layout layout;
-    Mode::Enum mode;
-};
-using ContextPtr = std::shared_ptr<Context>;
-
-class Timer : public DigitPanel, public GameStateListener
-{
-public:
-    Timer(const ContextPtr &context) : DigitPanel(context, context->layout.getTimerDigitPanel()) {}
-
-    SDL_Rect getDigitRect(int position) override
-    {
-        return _context->layout.getTimerDigit(position);
-    }
-
-    int getDisplayValue() override { return running ? static_cast<int>(timer.elapsed()) : elapsed; }
-
-    void onStateChange(GameState state) override
-    {
-        if (state == GameState::PLAYING) {
-            running = true;
-            timer.reset();
-        } else if (state == GameState::WON || state == GameState::LOST) {
-            running = false;
-            elapsed = static_cast<int>(timer.elapsed());
-        } else {
-            running = false;
-            elapsed = 0;
-        }
-    }
-
-private:
-    const ContextPtr _context;
-    ClockTimer timer;
-    bool running = false;
-    int elapsed = 0;
-};
-
-using TimerPtr = std::shared_ptr<Timer>;
-
-class Sprite
-{
-public:
-    Sprite(const ContextPtr &context, const SDL_Rect &boundingBox)
-        : _context(context), _boundingBox(boundingBox)
-    {}
-
-    virtual ~Sprite() = default;
-
-public:
-    void onClick(const SDL_MouseButtonEvent &evt)
-    {
-        if (contains(evt.x, evt.y)) {
-            handleClick(evt);
-        }
-    }
-
-    virtual void render() {}
-
-    virtual void handleClick(const SDL_MouseButtonEvent &evt) {}
-
-protected:
-    bool contains(int x, int y) const
-    {
-        auto pt{SDL_Point{x, y}};
-        return SDL_PointInRect(&pt, &_boundingBox);
-    }
-
-protected:
-    const ContextPtr _context;
-    const SDL_Rect _boundingBox;
-};
-using SpritePtr = std::shared_ptr<Sprite>;
-
-class DigitPanel : public Sprite
-{
-public:
-    DigitPanel(const ContextPtr &context, const SDL_Rect &boundingBox)
-        : Sprite(context, boundingBox)
-    {}
-
-    virtual SDL_Rect getDigitRect(int position) = 0;
-    virtual int getDisplayValue() = 0;
-
-    void render() override
-    {
-        getTexture()->render(_boundingBox);
-
-        auto value = getDisplayValue();
-        auto onesDigit = value % 10;
-        auto tensDigit = (value / 10) % 10;
-        auto hundredsDigit = (value / 100) % 10;
-
-        SDL_Rect rect = getDigitRect(0);
-        getDigit(hundredsDigit)->render(rect);
-
-        rect = getDigitRect(1);
-        getDigit(tensDigit)->render(rect);
-
-        rect = getDigitRect(2);
-        getDigit(onesDigit)->render(rect);
-    }
-
-private:
-    sdl::ITexturePtr getTexture()
-    {
-        return _context->imageRepo->get("minesweeper_digit_panel");
-    }
-    sdl::ITexturePtr getDigit(unsigned digit)
-    {
-        switch (digit) {
-        case 1:
-            return _context->imageRepo->get("minesweeper_digit_one");
-        case 2:
-            return _context->imageRepo->get("minesweeper_digit_two");
-        case 3:
-            return _context->imageRepo->get("minesweeper_digit_three");
-        case 4:
-            return _context->imageRepo->get("minesweeper_digit_four");
-        case 5:
-            return _context->imageRepo->get("minesweeper_digit_five");
-        case 6:
-            return _context->imageRepo->get("minesweeper_digit_six");
-        case 7:
-            return _context->imageRepo->get("minesweeper_digit_seven");
-        case 8:
-            return _context->imageRepo->get("minesweeper_digit_eight");
-        case 9:
-            return _context->imageRepo->get("minesweeper_digit_nine");
-        default:
-            return _context->imageRepo->get("minesweeper_digit_zero");
-        }
-    }
-
-};
-
-class Background : public Sprite
-{
-public:
-    Background(const ContextPtr &context) : Sprite(context, context->layout.getBackground()) {}
-    void render() override { getTexture()->render(_boundingBox); }
-
-private:
-    sdl::ITexturePtr getTexture() const
-    {
-        switch (_context->mode) {
-        case Mode::BEGINNER:
-            return _context->imageRepo->get("minesweeper_bg_beginner");
-        case Mode::INTERMEDIATE:
-            return _context->imageRepo->get("minesweeper_bg_intermediate");
-        default:
-            return _context->imageRepo->get("minesweeper_bg_expert");
-        }
-    }
-};
-
-class Game
-{
-public:
-    using Sprites = std::vector<SpritePtr>;
-
-public:
-    Game(const ContextPtr &context) : _context(context)
-    {
-        auto background = std::make_shared<Background>(_context);
-        _sprites.push_back(background);
-        auto timer{std::make_shared<Timer>(context)};
-
-    }
-    void run(const Options &options) {}
-
-private:
-    const ContextPtr _context;
-    Sprites _sprites;
-};
-} // namespace minesweeper
-
-int main(int argc, char **argv) {
+int oldMinesweeper(int argc, char **argv) {
     Mode::Enum mode = Mode::parse(argc > 1 ? *argv[1] : 'e');
     Options options{Options::getOptions(mode)};
     Layout layout{mode};
@@ -1183,24 +994,24 @@ int main(int argc, char **argv) {
         std::cerr << "SDL_Init failed: " << SDL_GetError() << std::endl;
         return 1;
     }
-#define USE_INTERFACES
-#ifdef USE_INTERFACES
-    auto window = sdl::IWindow::create("Minesweeper", layout.getWindow(), SDL_WINDOW_SHOWN);
-    auto renderer = window->createRenderer();
-    auto imageRepo = renderer->createImageRepo("images/");
-    auto context = minesweeper::Context{window, renderer, imageRepo, layout, mode};
 
-    auto contextPtr = std::make_shared<minesweeper::Context>(context);
-    auto game{minesweeper::Game(contextPtr)};
-    game.run(options);
-
-#else
     Window window{layout, mode};
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
 
     Game game{imageRepo, renderer, options, layout};
     game.run();
-#endif
+
     SDL_Quit();
+    return 0;
+}
+
+namespace minesweeper {
+extern int newMinesweeper(int argc, char**argv);
+}
+
+int main(int argc, char **argv) {
+    return minesweeper::newMinesweeper(argc, argv);
+
+//    return oldMinesweeper(argc, argv);
 }

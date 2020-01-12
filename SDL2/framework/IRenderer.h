@@ -16,6 +16,7 @@ public:
 
 public:
     virtual IImageRepoPtr createImageRepo(const std::string &folder) = 0;
+    virtual void repaint() = 0;
 };
 using IRendererPtr = std::shared_ptr<IRenderer>;
 
