@@ -3,7 +3,9 @@
 #include "Mode.h"
 #include "DigitalPanel.h"
 #include "Options.h"
+
 #include "util/RandomFactory.h"
+#include "util/IElapsedTime.h"
 
 #include "SDL2/framework/IWindow.h"
 #include "SDL2/framework/IRenderer.h"
@@ -40,54 +42,40 @@ public:
 using IGameStateListenerPtr = std::shared_ptr<IGameStateListener>;
 using IGameStateListenerWPtr = std::weak_ptr<IGameStateListener>;
 
-class ClockTimer {
-private:
-    using clock_t = std::chrono::high_resolution_clock;
-    using second_t = std::chrono::duration<double, std::ratio<1> >;
-    std::chrono::time_point<clock_t> start;
-public:
-    ClockTimer() : start(clock_t::now()) {
-    }
-
-    void reset() {
-        start = clock_t::now();
-    }
-
-    [[nodiscard]] double elapsed() const {
-        return std::chrono::duration_cast<second_t>(clock_t::now() - start).count();
-    }
-};
 
 class Timer : public DigitPanel, public IGameStateListener
 {
 public:
     Timer(const ContextPtr &context, const IDigitsPtr& digits) : DigitPanel(context, digits, context->layout.getTimerDigitPanel()) {}
 
+public:
     SDL_Rect getDigitRect(int position) override
     {
         return _context->layout.getTimerDigit(position);
     }
 
-    int getDisplayValue() override { return running ? static_cast<int>(timer.elapsed()) : elapsed; }
+    int getDisplayValue() override {
+        return _running ? static_cast<int>(_timer->elapsed()) : _elapsed;
+    }
 
     void onStateChange(GameState state) override
     {
         if (state == GameState::PLAYING) {
-            running = true;
-            timer.reset();
+            _running = true;
+            _timer->reset();
         } else if (state == GameState::WON || state == GameState::LOST) {
-            running = false;
-            elapsed = static_cast<int>(timer.elapsed());
+            _running = false;
+            _elapsed = static_cast<int>(_timer->elapsed());
         } else {
-            running = false;
-            elapsed = 0;
+            _running = false;
+            _elapsed = 0;
         }
     }
 
 private:
-    ClockTimer timer;
-    bool running = false;
-    int elapsed = 0;
+    util::IElapsedTimeUPtr _timer {util::createElapsedTime()};
+    bool _running = false;
+    unsigned _elapsed = 0;
 };
 
 using TimerPtr = std::shared_ptr<Timer>;
@@ -99,17 +87,17 @@ public:
     }
 
     void reset() {
-        mines.clear();
-        for (int i = 1; i <= _options.getMines(); i++) {
-            while (mines.size() < i) {
-                mines.insert(_random->random(0, _options.getTiles() - 1));
+        _mines.clear();
+        for (unsigned i = 1; i <= _options.getMines(); i++) {
+            while (_mines.size() < i) {
+                _mines.insert(_random->random(0, _options.getTiles() - 1));
             }
         }
     }
 
     bool mineAt(int row, int col) {
         int projection = row * _options.getColumns() + col;
-        return mines.find(projection) != mines.end();
+        return _mines.find(projection) != _mines.end();
     }
 
     int adjacentMines(int row, int col) {
@@ -123,7 +111,7 @@ private:
     const Options _options;
     const util::IRandomPtr _random = util::RandomFactory::create();
 
-    std::set<int> mines;
+    std::set<int> _mines;
 };
 
 class Background : public Sprite
@@ -148,9 +136,9 @@ private:
 
 class TileListener {
 public:
-    virtual void onReveal(bool mine, bool adjacentMines) {}
+    virtual void onReveal([[maybe_unused]] bool mine, [[maybe_unused]] bool adjacentMines) {}
     virtual void onClear() {}
-    virtual void onFlag(bool flagged) {}
+    virtual void onFlag([[maybe_unused]] bool flagged) {}
 };
 
 using TileListenerPtr = std::shared_ptr<TileListener>;
@@ -236,13 +224,13 @@ public:
     void assignListeners(const GameStateListeners& l) { _listeners = l; }
 
 
-    void handleClick(const SDL_MouseButtonEvent& evt) override {
+    void handleClick([[maybe_unused]] const SDL_MouseButtonEvent& evt) override {
         _state = GameState::INIT;
         _revealed = 0;
         notifyListeners();
     }
 
-    void onReveal(bool mine, bool adjacentMines) override {
+    void onReveal(bool mine, [[maybe_unused]]bool adjacentMines) override {
         if (mine) {
             _state = GameState::LOST;
             notifyListeners();
@@ -294,27 +282,26 @@ private:
 template<typename T>
 class Matrix {
 public:
-    Matrix(int rows, int columns, const T &value) : rows(rows), columns(columns), matrix(rows * columns, value) {}
+    Matrix(unsigned rows, unsigned columns, const T &value) : _rows(rows), _columns(columns), _matrix(rows * columns, value) {}
 
 public:
-    T &at(int row, int col) {
-        int n = row * columns + col;
-        return matrix[n];
+    T &at(unsigned row, unsigned col) {
+        unsigned n = row * _columns + col;
+        return _matrix[n];
     }
 
-    void forEach(std::function<void(int row, int col, T &val)> fn) {
-        for (int i = 0; i < matrix.size(); i++) {
-            int row = i / columns;
-            int col = i % columns;
-            fn(row, col, matrix[i]);
+    void forEach(std::function<void(unsigned row, unsigned col, T &val)> fn) {
+        for (size_t i = 0; i < _matrix.size(); i++) {
+            auto row = i / _columns;
+            auto col = i % _columns;
+            fn(row, col, _matrix[i]);
         }
     }
 
 private:
-    int rows;
-    int columns;
-    std::vector<T> matrix;
-
+    unsigned _rows;
+    unsigned _columns;
+    std::vector<T> _matrix;
 };
 
 class Tile : public Sprite, public TileListener, public IGameStateListener, public IFlagStateListener {
@@ -515,7 +502,9 @@ public:
     }
 
     void onFlagStateChange(bool exhausted) override {
-        tiles.forEach([exhausted](int r, int c, std::shared_ptr<Tile> &t) { t->onFlagStateChange(exhausted); });
+        tiles.forEach([exhausted]([[maybe_unused]]unsigned r, [[maybe_unused]]unsigned c, std::shared_ptr<Tile> &t) {
+            t->onFlagStateChange(exhausted);
+        });
     }
 
     void onStateChange(GameState state) override {
@@ -527,11 +516,13 @@ public:
             tiles.forEach(fn);
         }
 
-        tiles.forEach([state](int r, int c, std::shared_ptr<Tile> &t) { t->onStateChange(state); });
+        tiles.forEach([state]([[maybe_unused]] unsigned r, [[maybe_unused]]unsigned c, std::shared_ptr<Tile> &t) {
+            t->onStateChange(state);
+        });
     }
 
     void render() override {
-        tiles.forEach([](int r, int c, TilePtr &t) { t->render(); });
+        tiles.forEach([]([[maybe_unused]]unsigned r, [[maybe_unused]]unsigned c, TilePtr &t) { t->render(); });
     }
 
 private:

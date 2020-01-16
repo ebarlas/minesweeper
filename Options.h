@@ -7,38 +7,34 @@
 namespace minesweeper {
 
 class Options {
-private:
-    const int rows;
-    const int columns;
-    const int mines;
 public:
-    Options(int rows, int columns, int mines) : rows(rows), columns(columns), mines(mines) {
+    Options(unsigned rows, unsigned columns, unsigned mines) : rows(rows), columns(columns), mines(mines) {
 
     }
 
-    [[nodiscard]] int getTiles() const {
+    [[nodiscard]] unsigned getTiles() const {
         return rows * columns;
     }
 
-    [[nodiscard]] int getMines() const {
+    [[nodiscard]] unsigned getMines() const {
         return mines;
     }
 
-    [[nodiscard]] int getBlanks() const {
+    [[nodiscard]] unsigned getBlanks() const {
         return getTiles() - mines;
     }
 
-    [[nodiscard]] int getRows() const {
+    [[nodiscard]] unsigned getRows() const {
         return rows;
     }
 
-    [[nodiscard]] int getColumns() const {
+    [[nodiscard]] unsigned getColumns() const {
         return columns;
     }
 
-    void forEachNeighbor(int row, int col, const std::function<void(int, int)> &fn) const {
-        for (int r = row - 1; r <= row + 1; r++) {
-            for (int c = col - 1; c <= col + 1; c++) {
+    void forEachNeighbor(unsigned row, unsigned col, const std::function<void(unsigned, unsigned)> &fn) const {
+        for (auto r = row - 1; r <= row + 1; r++) {
+            for (auto c = col - 1; c <= col + 1; c++) {
                 if (r != row || c != col) {
                     if (r >= 0 && r < rows && c >= 0 && c < columns) {
                         fn(r, c);
@@ -58,6 +54,12 @@ public:
                 return Options{16, 30, 99};
         }
     }
+
+private:
+    const unsigned rows;
+    const unsigned columns;
+    const unsigned mines;
+
 };
 
 } // namespace minesweeper

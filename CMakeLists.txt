@@ -31,6 +31,9 @@ set (Util
     util/detail/Random.h
     util/detail/Random.cpp
     util/detail/RandomFactory.cpp
+    util/IElapsedTime.h
+    util/detail/ElapsedTime.h
+    util/detail/ElapsedTime.cpp
     )
 
 add_executable(minesweeper
