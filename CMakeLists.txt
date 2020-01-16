@@ -25,6 +25,14 @@ set(SDL2Detail
     SDL2/detail/Texture.cpp
     )
 
+set (Util
+    util/IRandom.h
+    util/RandomFactory.h
+    util/detail/Random.h
+    util/detail/Random.cpp
+    util/detail/RandomFactory.cpp
+    )
+
 add_executable(minesweeper
     minesweeper.cpp
     NewMinesweeper.cpp
@@ -38,6 +46,7 @@ add_executable(minesweeper
     Options.cpp
     Sprite.h
     Sprite.cpp
+    ${Util}
     ${SDL2Framework}
     ${SDL2Detail}
     )

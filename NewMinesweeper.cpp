@@ -3,6 +3,7 @@
 #include "Mode.h"
 #include "DigitalPanel.h"
 #include "Options.h"
+#include "util/RandomFactory.h"
 
 #include "SDL2/framework/IWindow.h"
 #include "SDL2/framework/IRenderer.h"
@@ -13,11 +14,11 @@
 #include <chrono>
 #include <map>
 #include <vector>
-#include <random>
 #include <set>
 #include <functional>
 #include <memory>
 #include "SDL.h"
+
 
 namespace minesweeper {
 
@@ -38,20 +39,6 @@ public:
 };
 using IGameStateListenerPtr = std::shared_ptr<IGameStateListener>;
 using IGameStateListenerWPtr = std::weak_ptr<IGameStateListener>;
-
-class Random {
-public:
-    Random() : mersenne{static_cast<std::mt19937::result_type>(std::time(nullptr))} {
-
-    }
-
-    int randomInt(int min, int max) {
-        std::uniform_int_distribution die{min, max};
-        return die(mersenne);
-    }
-private:
-    std::mt19937 mersenne;
-};
 
 class ClockTimer {
 private:
@@ -74,7 +61,7 @@ public:
 class Timer : public DigitPanel, public IGameStateListener
 {
 public:
-    Timer(const ContextPtr &context) : DigitPanel(context, context->layout.getTimerDigitPanel()) {}
+    Timer(const ContextPtr &context, const IDigitsPtr& digits) : DigitPanel(context, digits, context->layout.getTimerDigitPanel()) {}
 
     SDL_Rect getDigitRect(int position) override
     {
@@ -107,7 +94,7 @@ using TimerPtr = std::shared_ptr<Timer>;
 
 class MineField {
 public:
-    explicit MineField(const Options &options) : _options(options) {
+    MineField(const Options &options) : _options(options) {
         reset();
     }
 
@@ -115,7 +102,7 @@ public:
         mines.clear();
         for (int i = 1; i <= _options.getMines(); i++) {
             while (mines.size() < i) {
-                mines.insert(random.randomInt(0, _options.getTiles() - 1));
+                mines.insert(_random->random(0, _options.getTiles() - 1));
             }
         }
     }
@@ -134,7 +121,8 @@ public:
 
 private:
     const Options _options;
-    Random random;
+    const util::IRandomPtr _random = util::RandomFactory::create();
+
     std::set<int> mines;
 };
 
@@ -185,8 +173,8 @@ public:
     using FlagStateListeners = std::vector<IFlagStateListenerWPtr>;
 
 public:
-    FlagCounter(const ContextPtr& context, const Options options)
-        : DigitPanel(context, context->layout.getFlagsDigitPanel())
+    FlagCounter(const ContextPtr& context, const IDigitsPtr& digits, const Options options)
+        : DigitPanel(context, digits, context->layout.getFlagsDigitPanel())
         , _context(context)
         , _options(options)
         , _flags(options.getMines())
@@ -562,9 +550,10 @@ public:
 public:
     Game(const ContextPtr &context, const Options& options) : _context(context)
     {
+        auto digits {std::make_shared<Digits>(_context)};
         auto background {std::make_shared<Background>(_context)};
-        auto timer {std::make_shared<Timer>(context)};
-        auto flagCounter {std::make_shared<FlagCounter>(_context, options)};
+        auto timer {std::make_shared<Timer>(context, digits)};
+        auto flagCounter {std::make_shared<FlagCounter>(_context, digits, options)};
         auto button {std::make_shared<Button>(_context, options)};
         auto grid {std::make_shared<Grid>(_context, options)};
 

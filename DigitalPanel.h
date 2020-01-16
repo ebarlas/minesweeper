@@ -5,15 +5,55 @@
 #include "SDL2/framework/ITexture.h"
 
 #include "SDL.h"
+#include <vector>
 
 namespace minesweeper {
+
+class IDigits {
+public:
+    virtual ~IDigits() = default;
+
+public:
+    virtual sdl::ITextureWPtr digit(unsigned value) const = 0;
+};
+
+using IDigitsPtr = std::shared_ptr<IDigits>;
+
+
+class Digits : public IDigits {
+public:
+    Digits(const ContextPtr& context) {
+        auto repo = context->imageRepo;
+        _digits = { repo->get("minesweeper_digit_zero"),
+                    repo->get("minesweeper_digit_one"),
+                    repo->get("minesweeper_digit_two"),
+                    repo->get("minesweeper_digit_three"),
+                    repo->get("minesweeper_digit_four"),
+                    repo->get("minesweeper_digit_five"),
+                    repo->get("minesweeper_digit_six"),
+                    repo->get("minesweeper_digit_seven"),
+                    repo->get("minesweeper_digit_eight"),
+                    repo->get("minesweeper_digit_nine")
+                  };
+    }
+
+public:
+    sdl::ITextureWPtr digit(unsigned value) const override {
+        if( value > 9) return sdl::ITextureWPtr();
+        return _digits[value];
+    }
+
+private:
+    std::vector<sdl::ITextureWPtr> _digits;
+};
 
 class DigitPanel : public Sprite
 {
 public:
-    DigitPanel(const ContextPtr &context, const SDL_Rect &boundingBox)
-        : Sprite(context, boundingBox)
-    {}
+    DigitPanel(const ContextPtr &context, const IDigitsPtr& digits, const SDL_Rect &boundingBox)
+        : Sprite(context, boundingBox), _digits(digits)
+    {
+    }
 
     virtual SDL_Rect getDigitRect(int position) = 0;
     virtual int getDisplayValue() = 0;
@@ -45,29 +85,11 @@ private:
 
     sdl::ITexturePtr getDigit(unsigned digit)
     {
-        switch (digit) {
-        case 1:
-            return _context->imageRepo->get("minesweeper_digit_one");
-        case 2:
-            return _context->imageRepo->get("minesweeper_digit_two");
-        case 3:
-            return _context->imageRepo->get("minesweeper_digit_three");
-        case 4:
-            return _context->imageRepo->get("minesweeper_digit_four");
-        case 5:
-            return _context->imageRepo->get("minesweeper_digit_five");
-        case 6:
-            return _context->imageRepo->get("minesweeper_digit_six");
-        case 7:
-            return _context->imageRepo->get("minesweeper_digit_seven");
-        case 8:
-            return _context->imageRepo->get("minesweeper_digit_eight");
-        case 9:
-            return _context->imageRepo->get("minesweeper_digit_nine");
-        default:
-            return _context->imageRepo->get("minesweeper_digit_zero");
-        }
+        return _digits->digit(digit).lock();
     }
+
+private:
+    const IDigitsPtr _digits;
 };
 
 }

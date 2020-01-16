@@ -16,5 +16,6 @@ public:
 };
 
 using ITexturePtr = std::shared_ptr<ITexture>;
+using ITextureWPtr = std::weak_ptr<ITexture>;
 
 } // namespace sdl
