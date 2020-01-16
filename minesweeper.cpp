@@ -985,7 +985,7 @@ public:
     }
 };
 
-int main(int argc, char **argv) {
+int oldMinesweeper(int argc, char **argv) {
     Mode::Enum mode = Mode::parse(argc > 1 ? *argv[1] : 'e');
     Options options{Options::getOptions(mode)};
     Layout layout{mode};
@@ -1003,4 +1003,15 @@ int main(int argc, char **argv) {
     game.run();
 
     SDL_Quit();
+    return 0;
+}
+
+namespace minesweeper {
+extern int newMinesweeper(int argc, char**argv);
+}
+
+int main(int argc, char **argv) {
+    return minesweeper::newMinesweeper(argc, argv);
+
+//    return oldMinesweeper(argc, argv);
 }
