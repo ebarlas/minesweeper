@@ -6,7 +6,7 @@
 
 #include "util/RandomFactory.h"
 #include "util/IElapsedTime.h"
-
+#include "util/Coordinates.h"
 #include "SDL2/framework/IWindow.h"
 #include "SDL2/framework/IRenderer.h"
 #include "SDL2/framework/IImageRepo.h"
@@ -41,7 +41,6 @@ public:
 };
 using IGameStateListenerPtr = std::shared_ptr<IGameStateListener>;
 using IGameStateListenerWPtr = std::weak_ptr<IGameStateListener>;
-
 
 class Timer : public DigitPanel, public IGameStateListener
 {
@@ -102,8 +101,9 @@ public:
 
     int adjacentMines(int row, int col) {
         int sum = 0;
-        auto fn = [&sum, this](int r, int c) { sum = sum + (mineAt(r, c) ? 1 : 0); };
-        _options.forEachNeighbor(row, col, fn);
+        auto fn = [&sum, this](const util::Coordinate& coord) { sum = sum + (mineAt(coord.row, coord.column) ? 1 : 0); };
+        auto neighbors = _options.neighbors(row, col);
+        std::for_each(neighbors.begin(), neighbors.end(), fn);
         return sum;
     }
 
@@ -279,29 +279,51 @@ private:
     GameStateListeners _listeners;
 };
 
+
 template<typename T>
 class Matrix {
 public:
-    Matrix(unsigned rows, unsigned columns, const T &value) : _rows(rows), _columns(columns), _matrix(rows * columns, value) {}
+    using Coordinate = util::Coordinate;
+    using Coordinates = util::Coordinates;
+
+    using contents_type = std::vector<T>;
+    using row_type = Coordinate::ordinate_type;
+    using column_type = Coordinate::ordinate_type;
 
 public:
-    T &at(unsigned row, unsigned col) {
-        unsigned n = row * _columns + col;
+    Matrix(row_type rows, row_type columns, const T &value) : _coordinates(rows, columns), _matrix(rows * columns, value) {}
+
+public:
+    T &at(const Coordinate& coord) {
+        return _matrix[coord.row * _coordinates.columns() + coord.column];
+    }
+
+    T &at(row_type row, row_type col) {
+        unsigned n = row * _coordinates.columns() + col;
         return _matrix[n];
     }
 
+    auto rows() const { return _coordinates.rows(); }
+    auto columns() const { return _coordinates.columns(); }
+    auto begin() { return _matrix.begin(); }
+    auto end() { return _matrix.end(); }
+
+    auto neighbors(row_type row, column_type col) { return _coordinates.neighbors(row, col); }
+    Coordinates& coordinates() { return _coordinates; }
+
+#if 1
     void forEach(std::function<void(unsigned row, unsigned col, T &val)> fn) {
         for (size_t i = 0; i < _matrix.size(); i++) {
-            auto row = i / _columns;
-            auto col = i % _columns;
+            auto row = i / _coordinates.columns();
+            auto col = i % _coordinates.columns();
             fn(row, col, _matrix[i]);
         }
     }
+#endif
 
 private:
-    unsigned _rows;
-    unsigned _columns;
-    std::vector<T> _matrix;
+    Coordinates _coordinates;
+    contents_type _matrix;
 };
 
 class Tile : public Sprite, public TileListener, public IGameStateListener, public IFlagStateListener {
@@ -482,17 +504,32 @@ public:
             SDL_Rect rect = _context->layout.getTile(_boundingBox.x, _boundingBox.y, r, c);
             t = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
         };
-        tiles.forEach(fn);
+        //tiles.forEach(fn);
+        for(auto coord : tiles.coordinates()) {
+            auto adjacentMines = mineField.adjacentMines(coord.row, coord.column);
+            auto mine = mineField.mineAt(coord.row, coord.column);
+            auto rect = _context->layout.getTile(_boundingBox.x, _boundingBox.y, coord.row, coord.column);
+            tiles.at(coord) = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
+        }
     }
 
     void setListeners(const std::vector<TileListenerWPtr> &v) {
         auto fe = [&v, this](int r, int c, TilePtr &t) {
             std::vector<TileListenerWPtr> listeners = v;
-            auto fn = [&listeners, this](int r, int c) { listeners.push_back(tiles.at(r, c)); };
-            options.forEachNeighbor(r, c, fn);
+            for( auto& coord : options.neighbors(r,c) ) {
+                listeners.push_back(tiles.at(coord));
+            }
             t->setListeners(listeners);
         };
-        tiles.forEach(fe);
+        //tiles.forEach(fe);
+
+        for( auto coord : tiles.coordinates()) {
+            auto listeners = v;
+            for( auto& neighbor : options.neighbors(coord.row, coord.column) ) {
+                listeners.push_back(tiles.at(neighbor));
+            }
+            tiles.at(coord)->setListeners(listeners);
+        }
     }
 
     void handleClick(const SDL_MouseButtonEvent& evt) override {

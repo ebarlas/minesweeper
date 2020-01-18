@@ -34,6 +34,8 @@ set (Util
     util/IElapsedTime.h
     util/detail/ElapsedTime.h
     util/detail/ElapsedTime.cpp
+    util/Coordinates.h
+    util/Coordinates.cpp
     )
 
 add_executable(minesweeper

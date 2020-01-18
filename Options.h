@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Mode.h"
+#include "util/Coordinates.h"
 
 #include <functional>
 
@@ -8,42 +9,35 @@ namespace minesweeper {
 
 class Options {
 public:
-    Options(unsigned rows, unsigned columns, unsigned mines) : rows(rows), columns(columns), mines(mines) {
+    using ordinate_type = util::Coordinate::ordinate_type;
+
+public:
+    Options(ordinate_type rows, ordinate_type columns, unsigned mines) : _coords{rows, columns}, mines(mines) {
 
     }
 
-    [[nodiscard]] unsigned getTiles() const {
-        return rows * columns;
+public:
+    [[nodiscard]] auto getTiles() const {
+        return _coords.rows() * _coords.columns();
     }
 
-    [[nodiscard]] unsigned getMines() const {
+    [[nodiscard]] auto getMines() const {
         return mines;
     }
 
-    [[nodiscard]] unsigned getBlanks() const {
+    [[nodiscard]] auto getBlanks() const {
         return getTiles() - mines;
     }
 
-    [[nodiscard]] unsigned getRows() const {
-        return rows;
+    [[nodiscard]] auto getRows() const {
+        return _coords.rows();
     }
 
-    [[nodiscard]] unsigned getColumns() const {
-        return columns;
+    [[nodiscard]] auto getColumns() const {
+        return _coords.columns();
     }
 
-    void forEachNeighbor(unsigned row, unsigned col, const std::function<void(unsigned, unsigned)> &fn) const {
-        for (auto r = row - 1; r <= row + 1; r++) {
-            for (auto c = col - 1; c <= col + 1; c++) {
-                if (r != row || c != col) {
-                    if (r >= 0 && r < rows && c >= 0 && c < columns) {
-                        fn(r, c);
-                    }
-                }
-            }
-        }
-    }
-
+    auto neighbors(ordinate_type row, ordinate_type col) const { return _coords.neighbors(row, col); }
     static Options getOptions(const Mode::Enum mode) {
         switch (mode) {
             case Mode::BEGINNER:
@@ -56,8 +50,7 @@ public:
     }
 
 private:
-    const unsigned rows;
-    const unsigned columns;
+    const util::Coordinates _coords;
     const unsigned mines;
 
 };
