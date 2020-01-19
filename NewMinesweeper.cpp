@@ -106,20 +106,12 @@ public:
         return mineAt(coord.row, coord.column);
     }
 
-    auto adjancentMines( const Coordinate& coord)
+    auto adjacentMines( const Coordinate& coord)
     {
         unsigned sum = 0;
         for(const auto& neighbor : _options.neighbors(coord)) {
             sum += mineAt(neighbor) ? 1 : 0;
         }
-        return sum;
-    }
-
-    int adjacentMines(int row, int col) {
-        int sum = 0;
-        auto fn = [&sum, this](const util::Coordinate& coord) { sum = sum + (mineAt(coord.row, coord.column) ? 1 : 0); };
-        auto neighbors = _options.neighbors(row, col);
-        std::for_each(neighbors.begin(), neighbors.end(), fn);
         return sum;
     }
 
@@ -311,12 +303,11 @@ public:
 
 public:
     T &at(const Coordinate& coord) {
-        return _matrix[coord.row * _coordinates.columns() + coord.column];
+        return _matrix[_coordinates.toOffset(coord)];
     }
 
     T &at(row_type row, row_type col) {
-        unsigned n = row * _coordinates.columns() + col;
-        return _matrix[n];
+        return _matrix[_coordinates.toOffset(row, col)];
     }
 
     auto rows() const { return _coordinates.rows(); }
@@ -324,7 +315,6 @@ public:
     auto begin() { return _matrix.begin(); }
     auto end() { return _matrix.end(); }
 
-    auto neighbors(row_type row, column_type col) const { return _coordinates.neighbors(row, col); }
     auto neighbors(const Coordinate& coord) const { return _coordinates.neighbors(coord); }
     const Coordinates& coordinates() const { return _coordinates; }
 
@@ -498,7 +488,7 @@ using TilePtr = std::shared_ptr<Tile>;
 using TileWPtr = std::weak_ptr<Tile>;
 
 
-class Grid : public Sprite, public IGameStateListener, public IFlagStateListener {
+class Grid : public Sprite, public IGameStateListener, public IFlagStateListener {    
 public:
     //get access to a tile via it's coordinate
     auto& tile(const util::Coordinate& coord) { return tiles.at(coord); }
@@ -511,8 +501,8 @@ public:
             options(options)
     {
         for(const auto& coord : tiles.coordinates()) {
-            auto adjacentMines = mineField.adjacentMines(coord.row, coord.column);
-            auto mine = mineField.mineAt(coord.row, coord.column);
+            auto adjacentMines = mineField.adjacentMines(coord);
+            auto mine = mineField.mineAt(coord);
             auto rect = _context->layout.getTile(_boundingBox.x, _boundingBox.y, coord.row, coord.column);
             tile(coord) = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
         }
@@ -546,7 +536,7 @@ public:
             mineField.reset();
 
             for(const auto& coord : tiles.coordinates()) {
-                tile(coord)->reset(mineField.adjacentMines(coord.row, coord.column), mineField.mineAt(coord.row, coord.column));
+                tile(coord)->reset(mineField.adjacentMines(coord), mineField.mineAt(coord));
             }
         }
         for(const auto& coord : tiles.coordinates()) {

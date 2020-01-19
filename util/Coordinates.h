@@ -58,8 +58,7 @@ public:
         using reference = Coordinate;
 
     private:
-        // these need to come first in order to facilitate deduced retur type deduction
-        //auto toOffset(ordinate_type row, ordinate_type col) { return row * _cols + col; }
+        // this need to come first in order to facilitate deduced return type deduction
         auto fromOffset(offset_type offset) { return Coordinate { offset / _cols, offset % _cols }; }
 
     public:
@@ -82,6 +81,8 @@ public:
 public:
     auto rows() const { return _rows; }
     auto columns() const { return _cols; }
+    auto toOffset(ordinate_type row, ordinate_type col) const { return row * _cols + col; }
+    auto toOffset(const Coordinate& coord) const { return coord.row * _cols + coord.column; }
 
 public:
     Coordinates(ordinate_type rows, ordinate_type cols) : _rows(rows), _cols(cols) {}
