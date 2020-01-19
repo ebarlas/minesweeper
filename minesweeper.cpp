@@ -1,17 +1,15 @@
 #include <iostream>
-#include <chrono>
 #include <map>
 #include <vector>
-#include <random>
 #include <set>
 #include <functional>
 #include <memory>
 #include "SDL.h"
-#include "Mode.h"
-#include "Options.h"
-#include "Layout.h"
-#include "ClockTimer.h"
-#include "Random.h"
+#include "config/Mode.h"
+#include "config/Options.h"
+#include "config/Layout.h"
+#include "util/ClockTimer.h"
+#include "util/Random.h"
 
 using namespace minesweeper;
 
