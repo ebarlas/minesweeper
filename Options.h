@@ -10,6 +10,7 @@ namespace minesweeper {
 class Options {
 public:
     using ordinate_type = util::Coordinate::ordinate_type;
+    using Coordinate = util::Coordinate;
 
 public:
     Options(ordinate_type rows, ordinate_type columns, unsigned mines) : _coords{rows, columns}, mines(mines) {
@@ -38,6 +39,7 @@ public:
     }
 
     auto neighbors(ordinate_type row, ordinate_type col) const { return _coords.neighbors(row, col); }
+    auto neighbors(const Coordinate& coord) const { return _coords.neighbors(coord); }
     static Options getOptions(const Mode::Enum mode) {
         switch (mode) {
             case Mode::BEGINNER:

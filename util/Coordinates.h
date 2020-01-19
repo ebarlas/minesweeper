@@ -88,8 +88,11 @@ public:
 
 public:
     auto neighbors(ordinate_type row, ordinate_type col) const { return Neighbors(row, col, *this); }
+    auto neighbors(const Coordinate& coord) const { return Neighbors(coord.row, coord.column, *this); }
     auto begin() { return CoordinatesIterator(_rows, _cols, 0); }
     auto end() { return CoordinatesIterator(_rows, _cols, _rows * _cols); }
+    auto begin() const { return CoordinatesIterator(_rows, _cols, 0); }
+    auto end() const { return CoordinatesIterator(_rows, _cols, _rows * _cols); }
 
 private:
     ordinate_type _rows;

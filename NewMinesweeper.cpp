@@ -81,6 +81,9 @@ using TimerPtr = std::shared_ptr<Timer>;
 
 class MineField {
 public:
+    using Coordinate = util::Coordinate;
+
+public:
     MineField(const Options &options) : _options(options) {
         reset();
     }
@@ -97,6 +100,19 @@ public:
     bool mineAt(int row, int col) {
         int projection = row * _options.getColumns() + col;
         return _mines.find(projection) != _mines.end();
+    }
+
+    bool mineAt(const Coordinate& coord) {
+        return mineAt(coord.row, coord.column);
+    }
+
+    auto adjancentMines( const Coordinate& coord)
+    {
+        unsigned sum = 0;
+        for(const auto& neighbor : _options.neighbors(coord)) {
+            sum += mineAt(neighbor) ? 1 : 0;
+        }
+        return sum;
     }
 
     int adjacentMines(int row, int col) {
@@ -308,18 +324,9 @@ public:
     auto begin() { return _matrix.begin(); }
     auto end() { return _matrix.end(); }
 
-    auto neighbors(row_type row, column_type col) { return _coordinates.neighbors(row, col); }
-    Coordinates& coordinates() { return _coordinates; }
-
-#if 1
-    void forEach(std::function<void(unsigned row, unsigned col, T &val)> fn) {
-        for (size_t i = 0; i < _matrix.size(); i++) {
-            auto row = i / _coordinates.columns();
-            auto col = i % _coordinates.columns();
-            fn(row, col, _matrix[i]);
-        }
-    }
-#endif
+    auto neighbors(row_type row, column_type col) const { return _coordinates.neighbors(row, col); }
+    auto neighbors(const Coordinate& coord) const { return _coordinates.neighbors(coord); }
+    const Coordinates& coordinates() const { return _coordinates; }
 
 private:
     Coordinates _coordinates;
@@ -493,42 +500,32 @@ using TileWPtr = std::weak_ptr<Tile>;
 
 class Grid : public Sprite, public IGameStateListener, public IFlagStateListener {
 public:
+    //get access to a tile via it's coordinate
+    auto tile(const util::Coordinate& coord) { return tiles.at(coord); }
+
+public:
     Grid(const ContextPtr& context, const Options &options) :
             Sprite(context, context->layout.getGrid()),
             tiles{options.getRows(), options.getColumns(), TilePtr()},
             mineField(options),
-            options(options) {
-        auto fn = [this](int r, int c, TilePtr &t) {
-            int adjacentMines = mineField.adjacentMines(r, c);
-            bool mine = mineField.mineAt(r, c);
-            SDL_Rect rect = _context->layout.getTile(_boundingBox.x, _boundingBox.y, r, c);
-            t = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
-        };
-        //tiles.forEach(fn);
-        for(auto coord : tiles.coordinates()) {
+            options(options)
+    {
+        for(const auto& coord : tiles.coordinates()) {
             auto adjacentMines = mineField.adjacentMines(coord.row, coord.column);
             auto mine = mineField.mineAt(coord.row, coord.column);
             auto rect = _context->layout.getTile(_boundingBox.x, _boundingBox.y, coord.row, coord.column);
-            tiles.at(coord) = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
+            tile(coord) = std::make_shared<Tile>(_context, rect, adjacentMines, mine);
         }
     }
 
-    void setListeners(const std::vector<TileListenerWPtr> &v) {
-        auto fe = [&v, this](int r, int c, TilePtr &t) {
-            std::vector<TileListenerWPtr> listeners = v;
-            for( auto& coord : options.neighbors(r,c) ) {
-                listeners.push_back(tiles.at(coord));
-            }
-            t->setListeners(listeners);
-        };
-        //tiles.forEach(fe);
-
-        for( auto coord : tiles.coordinates()) {
+    void setListeners(const std::vector<TileListenerWPtr> &v)
+    {
+        for( const auto& coord : tiles.coordinates()) {
             auto listeners = v;
-            for( auto& neighbor : options.neighbors(coord.row, coord.column) ) {
-                listeners.push_back(tiles.at(neighbor));
+            for( const auto& neighbor : options.neighbors(coord) ) {
+                listeners.push_back(tile(neighbor));
             }
-            tiles.at(coord)->setListeners(listeners);
+            tile(coord)->setListeners(listeners);
         }
     }
 
@@ -539,28 +536,30 @@ public:
     }
 
     void onFlagStateChange(bool exhausted) override {
-        tiles.forEach([exhausted]([[maybe_unused]]unsigned r, [[maybe_unused]]unsigned c, std::shared_ptr<Tile> &t) {
-            t->onFlagStateChange(exhausted);
-        });
+        for(const auto& coord : tiles.coordinates()) {
+            tile(coord)->onFlagStateChange(exhausted);
+        }
     }
 
     void onStateChange(GameState state) override {
         if (state == GameState::INIT) {
             mineField.reset();
-            auto fn = [this](int r, int c, TilePtr &t) {
-                t->reset(mineField.adjacentMines(r, c), mineField.mineAt(r, c));
-            };
-            tiles.forEach(fn);
-        }
 
-        tiles.forEach([state]([[maybe_unused]] unsigned r, [[maybe_unused]]unsigned c, std::shared_ptr<Tile> &t) {
-            t->onStateChange(state);
-        });
+            for(const auto& coord : tiles.coordinates()) {
+                tile(coord)->reset(mineField.adjacentMines(coord.row, coord.column), mineField.mineAt(coord.row, coord.column));
+            }
+        }
+        for(const auto& coord : tiles.coordinates()) {
+            tile(coord)->onStateChange(state);
+        }
     }
 
     void render() override {
-        tiles.forEach([]([[maybe_unused]]unsigned r, [[maybe_unused]]unsigned c, TilePtr &t) { t->render(); });
+        for(const auto& coord : tiles.coordinates()) {
+            tile(coord)->render();
+        }
     }
+
 
 private:
     Matrix<TilePtr> tiles;
