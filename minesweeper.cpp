@@ -10,32 +10,9 @@
 #include "config/Layout.h"
 #include "util/ClockTimer.h"
 #include "util/Random.h"
+#include "sdl/Texture.h"
 
 using namespace minesweeper;
-
-class Texture {
-private:
-    SDL_Renderer *ren;
-    SDL_Texture *texture;
-public:
-    Texture() : Texture(nullptr, nullptr) {
-
-    }
-
-    Texture(SDL_Renderer *ren, SDL_Texture *texture) : ren(ren), texture(texture) {
-
-    }
-
-    ~Texture() {
-        SDL_DestroyTexture(texture);
-    }
-
-    void render(SDL_Rect *rect) {
-        SDL_RenderCopy(ren, texture, nullptr, rect);
-    }
-};
-
-using TexturePtr = std::shared_ptr<Texture>;
 
 class ImageRepo {
 private:
