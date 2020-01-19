@@ -501,7 +501,7 @@ using TileWPtr = std::weak_ptr<Tile>;
 class Grid : public Sprite, public IGameStateListener, public IFlagStateListener {
 public:
     //get access to a tile via it's coordinate
-    auto tile(const util::Coordinate& coord) { return tiles.at(coord); }
+    auto& tile(const util::Coordinate& coord) { return tiles.at(coord); }
 
 public:
     Grid(const ContextPtr& context, const Options &options) :
