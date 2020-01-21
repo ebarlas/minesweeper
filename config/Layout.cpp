@@ -1,7 +1,7 @@
 #include "Layout.h"
 
 namespace minesweeper {
-    Layout::Layout(const Mode::Enum mode) : mode(mode) {
+    Layout::Layout(Mode::Enum mode) : mode(mode) {
 
     }
 

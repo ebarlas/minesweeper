@@ -10,7 +10,7 @@ namespace minesweeper {
             EXPERT
         };
 
-        static Mode::Enum parse(const char mode);
+        static Mode::Enum parse(char mode);
     };
 }
 

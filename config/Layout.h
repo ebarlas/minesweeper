@@ -7,7 +7,7 @@
 namespace minesweeper {
     class Layout {
     public:
-        explicit Layout(const Mode::Enum mode);
+        explicit Layout(Mode::Enum mode);
         static int getTileSide();
         [[nodiscard]] SDL_Rect getDigitPanel(int left, int top) const;
         [[nodiscard]] SDL_Rect getFlagsDigitPanel() const;

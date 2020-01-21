@@ -18,11 +18,9 @@ using namespace minesweeper;
 class Renderer {
 private:
     SDL_Renderer *ren;
-    const Mode::Enum mode;
 public:
-    explicit Renderer(SDL_Window *win, const Mode::Enum mode) :
-            ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)),
-            mode(mode) {
+    explicit Renderer(SDL_Window *win) :
+            ren(SDL_CreateRenderer(win, -1, SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC)) {
         if (ren == nullptr) {
             ren = SDL_CreateRenderer(win, -1, 0);
         }
@@ -33,7 +31,7 @@ public:
     }
 
     ImageRepo createImageRepo(const char *dir) {
-        return ImageRepo{ren, dir, mode};
+        return ImageRepo{ren, dir};
     }
 
     void repaint() {
@@ -81,6 +79,9 @@ public:
 using SpritePtr = std::shared_ptr<Sprite>;
 
 class DigitPanel : public Sprite {
+private:
+    static constexpr const char *DIGITS[]{"digit_zero", "digit_one", "digit_two", "digit_three", "digit_four",
+                                          "digit_five", "digit_six", "digit_seven", "digit_eight", "digit_nine"};
 protected:
     DigitPanel(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
             : Sprite(imageRepo, renderer, boundingBox) {
@@ -93,7 +94,7 @@ protected:
 
 public:
     void render() override {
-        imageRepo.getDigitPanel()->render(&boundingBox);
+        imageRepo.get("digit_panel")->render(&boundingBox);
 
         int value = getDisplayValue();
         int onesDigit = value % 10;
@@ -101,13 +102,13 @@ public:
         int hundredsDigit = (value / 100) % 10;
 
         SDL_Rect rect = getDigitRect(0);
-        imageRepo.getDigit(hundredsDigit)->render(&rect);
+        imageRepo.get(DIGITS[hundredsDigit])->render(&rect);
 
         rect = getDigitRect(1);
-        imageRepo.getDigit(tensDigit)->render(&rect);
+        imageRepo.get(DIGITS[tensDigit])->render(&rect);
 
         rect = getDigitRect(2);
-        imageRepo.getDigit(onesDigit)->render(&rect);
+        imageRepo.get(DIGITS[onesDigit])->render(&rect);
     }
 };
 
@@ -259,11 +260,11 @@ private:
         switch (state) {
             case GameState::INIT:
             case GameState::PLAYING:
-                return imageRepo.getFacePlaying();
+                return imageRepo.get("face_playing");
             case GameState::WON:
-                return imageRepo.getFaceWin();
+                return imageRepo.get("face_win");
             default:
-                return imageRepo.getFaceLose();
+                return imageRepo.get("face_lose");
         }
     }
 
@@ -350,6 +351,9 @@ public:
 
 class Tile : public Sprite, public TileListener, public GameStateListener, public FlagStateListener {
 private:
+    static constexpr const char *TILES[]{"tile_none", "tile_one", "tile_two", "tile_three", "tile_four",
+                                         "tile_five", "tile_six", "tile_seven", "tile_eight"};
+
     int adjacentMines;
     int adjacentFlags;
     bool mine;
@@ -459,14 +463,14 @@ public:
     void render() override {
         if (revealed) {
             if (mine) {
-                imageRepo.getTileMine()->render(&boundingBox);
+                imageRepo.get("tile_mine")->render(&boundingBox);
             } else {
-                imageRepo.getTile(adjacentMines)->render(&boundingBox);
+                imageRepo.get(TILES[adjacentMines])->render(&boundingBox);
             }
         } else if (flagged) {
-            imageRepo.getTileFlag()->render(&boundingBox);
+            imageRepo.get("tile_flag")->render(&boundingBox);
         } else {
-            imageRepo.getTile()->render(&boundingBox);
+            imageRepo.get("tile")->render(&boundingBox);
         }
     }
 };
@@ -560,13 +564,27 @@ using GridPtr = std::shared_ptr<Grid>;
 
 class Background : public Sprite {
 public:
-    Background(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout)
-            : Sprite(imageRepo, renderer, layout.getBackground()) {
+    Background(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout, Mode::Enum mode)
+            : Sprite(imageRepo, renderer, layout.getBackground()), mode(mode) {
 
     }
 
     void render() override {
-        imageRepo.getBackground()->render(&boundingBox);
+        imageRepo.get(getBackground())->render(&boundingBox);
+    }
+
+private:
+    Mode::Enum mode;
+
+    const char *getBackground() {
+        switch (mode) {
+            case Mode::BEGINNER:
+                return "bg_beginner";
+            case Mode::INTERMEDIATE:
+                return "bg_intermediate";
+            default:
+                return "bg_expert";
+        }
     }
 };
 
@@ -589,8 +607,9 @@ private:
     }
 
 public:
-    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) : renderer(renderer) {
-        BackgroundPtr background{std::make_shared<Background>(imageRepo, renderer, layout)};
+    Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout, Mode::Enum mode)
+            : renderer(renderer) {
+        BackgroundPtr background{std::make_shared<Background>(imageRepo, renderer, layout, mode)};
         TimerPtr timer{std::make_shared<Timer>(imageRepo, renderer, layout)};
         FlagCounterPtr flagCounter{std::make_shared<FlagCounter>(imageRepo, renderer, options, layout)};
         ButtonPtr button{std::make_shared<Button>(imageRepo, renderer, options, layout)};
@@ -635,9 +654,8 @@ public:
 class Window {
 private:
     SDL_Window *win;
-    const Mode::Enum mode;
 public:
-    Window(const Layout &layout, const Mode::Enum mode) : mode(mode) {
+    Window(const Layout &layout) {
         SDL_Rect rect = layout.getWindow();
         win = SDL_CreateWindow("Minesweeper", rect.x, rect.y, rect.w, rect.h, SDL_WINDOW_SHOWN);
     }
@@ -647,7 +665,7 @@ public:
     }
 
     Renderer createRenderer() {
-        return Renderer{win, mode};
+        return Renderer{win};
     }
 };
 
@@ -661,12 +679,13 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    Window window{layout, mode};
+    Window window{layout};
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
 
-    Game game{imageRepo, renderer, options, layout};
+    Game game{imageRepo, renderer, options, layout, mode};
     game.run();
 
     SDL_Quit();
+    return 0;
 }
