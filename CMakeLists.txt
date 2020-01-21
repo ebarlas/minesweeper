@@ -15,5 +15,6 @@ add_executable(
         util/ClockTimer.cpp
         util/Random.cpp
         sdl/Texture.cpp
-        sdl/ImageRepo.cpp)
+        sdl/ImageRepo.cpp
+        sdl/Renderer.cpp)
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})
