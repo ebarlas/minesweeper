@@ -10,7 +10,6 @@
 #include "config/Layout.h"
 #include "util/ClockTimer.h"
 #include "util/Random.h"
-#include "sdl/Texture.h"
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
 #include "sprite/Sprite.h"
@@ -19,109 +18,10 @@
 #include "sprite/TileListener.h"
 #include "sprite/FlagStateListener.h"
 #include "sprite/FlagCounter.h"
+#include "sprite/Button.h"
+#include "sprite/MineField.h"
 
 using namespace minesweeper;
-
-class Button : public Sprite, public TileListener {
-private:
-    GameState state;
-    int revealed;
-    const Options &options;
-
-    std::vector<GameStateListenerWPtr> listeners;
-
-    TexturePtr getFaceImage() {
-        switch (state) {
-            case GameState::INIT:
-            case GameState::PLAYING:
-                return imageRepo.get("face_playing");
-            case GameState::WON:
-                return imageRepo.get("face_win");
-            default:
-                return imageRepo.get("face_lose");
-        }
-    }
-
-    void notifyListeners() {
-        for (auto &listener : listeners)
-            if (auto spt = listener.lock())
-                spt->onStateChange(state);
-    }
-
-public:
-    Button(ImageRepo &imageRepo, const Options &options, const Layout &layout) :
-            Sprite(imageRepo, layout.getFace()),
-            state(GameState::INIT),
-            revealed(0),
-            options(options) {
-
-    }
-
-    void setListeners(const std::vector<GameStateListenerWPtr> &v) {
-        listeners = v;
-    }
-
-    void handleClick(SDL_MouseButtonEvent evt) override {
-        state = GameState::INIT;
-        revealed = 0;
-        notifyListeners();
-    }
-
-    void onReveal(bool mine, bool adjacentMines) override {
-        if (mine) {
-            state = GameState::LOST;
-            notifyListeners();
-        } else {
-            if (state == GameState::INIT) {
-                state = GameState::PLAYING;
-                notifyListeners();
-            }
-            revealed++;
-            if (revealed == options.getBlanks()) {
-                state = GameState::WON;
-                notifyListeners();
-            }
-        }
-    }
-
-    void render() override {
-        getFaceImage()->render(&boundingBox);
-    }
-};
-
-using ButtonPtr = std::shared_ptr<Button>;
-
-class MineField {
-private:
-    Random random;
-    std::set<int> mines;
-    const Options &options;
-public:
-    explicit MineField(const Options &options) : options(options) {
-        reset();
-    }
-
-    void reset() {
-        mines.clear();
-        for (int i = 1; i <= options.getMines(); i++) {
-            while (mines.size() < i) {
-                mines.insert(random.randomInt(0, options.getTiles() - 1));
-            }
-        }
-    }
-
-    bool mineAt(int row, int col) {
-        int projection = row * options.getColumns() + col;
-        return mines.find(projection) != mines.end();
-    }
-
-    int adjacentMines(int row, int col) {
-        int sum = 0;
-        auto fn = [&sum, this](int r, int c) { sum = sum + (mineAt(r, c) ? 1 : 0); };
-        options.forEachNeighbor(row, col, fn);
-        return sum;
-    }
-};
 
 class Tile : public Sprite, public TileListener, public GameStateListener, public FlagStateListener {
 private:

@@ -13,7 +13,7 @@ namespace minesweeper {
     class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
     public:
         FlagCounter(ImageRepo &imageRepo, const Options &options, const Layout &layout);
-        void setListeners(const std::vector <FlagStateListenerWPtr> &v);
+        void setListeners(const std::vector<FlagStateListenerWPtr> &v);
         SDL_Rect getDigitRect(int position) override;
         int getDisplayValue() override;
         void onStateChange(GameState state) override;
@@ -22,7 +22,7 @@ namespace minesweeper {
         const Options &options;
         const Layout &layout;
         int flags;
-        std::vector <FlagStateListenerWPtr> listeners;
+        std::vector<FlagStateListenerWPtr> listeners;
         void notifyListeners(bool exhausted);
     };
 
