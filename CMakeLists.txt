@@ -16,5 +16,6 @@ add_executable(
         util/Random.cpp
         sdl/Texture.cpp
         sdl/ImageRepo.cpp
-        sdl/Renderer.cpp)
+        sdl/Renderer.cpp
+        sprite/Sprite.cpp)
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})

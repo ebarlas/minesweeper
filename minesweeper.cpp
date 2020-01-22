@@ -13,47 +13,9 @@
 #include "sdl/Texture.h"
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
+#include "sprite/Sprite.h"
 
 using namespace minesweeper;
-
-class Sprite {
-protected:
-    ImageRepo &imageRepo;
-    Renderer &renderer;
-
-    SDL_Rect boundingBox;
-
-    bool contains(int x, int y) {
-        return x >= boundingBox.x
-               && x < boundingBox.x + boundingBox.w
-               && y >= boundingBox.y
-               && y < boundingBox.y + boundingBox.h;
-    }
-
-    Sprite(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
-            : imageRepo(imageRepo), renderer(renderer), boundingBox(boundingBox) {
-
-    }
-
-public:
-    void onClick(SDL_MouseButtonEvent evt) {
-        if (contains(evt.x, evt.y)) {
-            handleClick(evt);
-        }
-    }
-
-    virtual void render() {
-
-    }
-
-    virtual void handleClick(SDL_MouseButtonEvent evt) {
-
-    }
-
-    virtual ~Sprite() = default;
-};
-
-using SpritePtr = std::shared_ptr<Sprite>;
 
 class DigitPanel : public Sprite {
 private:
