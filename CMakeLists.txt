@@ -23,5 +23,6 @@ add_executable(
         sprite/TileListener.cpp
         sprite/FlagCounter.cpp
         sprite/Button.cpp
-        sprite/MineField.cpp)
+        sprite/MineField.cpp
+        sprite/Tile.cpp)
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})
