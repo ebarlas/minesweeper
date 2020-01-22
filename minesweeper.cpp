@@ -18,18 +18,9 @@
 #include "sprite/GameStateListener.h"
 #include "sprite/Timer.h"
 #include "sprite/TileListener.h"
+#include "sprite/FlagStateListener.h"
 
 using namespace minesweeper;
-
-class FlagStateListener {
-public:
-    virtual void onFlagStateChange(bool exhausted) = 0;
-
-    virtual ~FlagStateListener() = default;
-};
-
-using FlagStateListenerPtr = std::shared_ptr<FlagStateListener>;
-using FlagStateListenerWPtr = std::weak_ptr<FlagStateListener>;
 
 class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
 private:
