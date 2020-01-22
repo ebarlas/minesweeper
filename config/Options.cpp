@@ -37,7 +37,7 @@ namespace minesweeper {
         }
     }
 
-    Options Options::getOptions(const Mode::Enum mode) {
+    Options Options::getOptions(Mode::Enum mode) {
         switch (mode) {
             case Mode::BEGINNER:
                 return Options{9, 9, 10};

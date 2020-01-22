@@ -14,7 +14,7 @@ namespace minesweeper {
         [[nodiscard]] int getRows() const;
         [[nodiscard]] int getColumns() const;
         void forEachNeighbor(int row, int col, const std::function<void(int, int)> &fn) const;
-        static Options getOptions(const Mode::Enum mode);
+        static Options getOptions(Mode::Enum mode);
     private:
         const int rows;
         const int columns;

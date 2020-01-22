@@ -14,68 +14,13 @@
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
 #include "sprite/Sprite.h"
-#include "sprite/DigitPanel.h"
 #include "sprite/GameStateListener.h"
 #include "sprite/Timer.h"
 #include "sprite/TileListener.h"
 #include "sprite/FlagStateListener.h"
+#include "sprite/FlagCounter.h"
 
 using namespace minesweeper;
-
-class FlagCounter : public DigitPanel, public GameStateListener, public TileListener {
-private:
-    const Options &options;
-    const Layout &layout;
-    int flags;
-
-    std::vector<FlagStateListenerWPtr> listeners;
-
-    void notifyListeners(bool exhausted) {
-        for (auto &listener : listeners)
-            if (auto spt = listener.lock())
-                spt->onFlagStateChange(exhausted);
-    }
-
-public:
-    FlagCounter(ImageRepo &imageRepo, const Options &options, const Layout &layout) :
-            DigitPanel(imageRepo, layout.getFlagsDigitPanel()),
-            options(options),
-            layout(layout),
-            flags(options.getMines()) {
-
-    }
-
-    void setListeners(const std::vector<FlagStateListenerWPtr> &v) {
-        listeners = v;
-    }
-
-    SDL_Rect getDigitRect(int position) override {
-        return layout.getFlagsDigit(position);
-    }
-
-    int getDisplayValue() override {
-        return flags;
-    }
-
-    void onStateChange(GameState state) override {
-        if (state == GameState::INIT)
-            flags = options.getMines();
-    }
-
-    void onFlag(bool flagged) override {
-        if (flagged) {
-            flags--;
-            if (flags == 0)
-                notifyListeners(true);
-        } else {
-            flags++;
-            if (flags == 1)
-                notifyListeners(false);
-        }
-    }
-};
-
-using FlagCounterPtr = std::shared_ptr<FlagCounter>;
 
 class Button : public Sprite, public TileListener {
 private:

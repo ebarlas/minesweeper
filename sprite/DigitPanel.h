@@ -1,7 +1,6 @@
 #ifndef MINESWEEPER_DIGITPANEL_H
 #define MINESWEEPER_DIGITPANEL_H
 
-#include "SDL.h"
 #include "Sprite.h"
 #include "../sdl/ImageRepo.h"
 

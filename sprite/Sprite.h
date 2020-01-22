@@ -1,7 +1,6 @@
 #ifndef MINESWEEPER_SPRITE_H
 #define MINESWEEPER_SPRITE_H
 
-#include "SDL.h"
 #include "../sdl/ImageRepo.h"
 
 namespace minesweeper {

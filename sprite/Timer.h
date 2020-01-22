@@ -1,7 +1,6 @@
 #ifndef MINESWEEPER_TIMER_H
 #define MINESWEEPER_TIMER_H
 
-#include "SDL.h"
 #include "../util/ClockTimer.h"
 #include "../config/Layout.h"
 #include "../sdl/ImageRepo.h"
