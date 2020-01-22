@@ -14,42 +14,9 @@
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
 #include "sprite/Sprite.h"
+#include "sprite/DigitPanel.h"
 
 using namespace minesweeper;
-
-class DigitPanel : public Sprite {
-private:
-    static constexpr const char *DIGITS[]{"digit_zero", "digit_one", "digit_two", "digit_three", "digit_four",
-                                          "digit_five", "digit_six", "digit_seven", "digit_eight", "digit_nine"};
-protected:
-    DigitPanel(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
-            : Sprite(imageRepo, renderer, boundingBox) {
-
-    }
-
-    virtual SDL_Rect getDigitRect(int position) = 0;
-
-    virtual int getDisplayValue() = 0;
-
-public:
-    void render() override {
-        imageRepo.get("digit_panel")->render(&boundingBox);
-
-        int value = getDisplayValue();
-        int onesDigit = value % 10;
-        int tensDigit = (value / 10) % 10;
-        int hundredsDigit = (value / 100) % 10;
-
-        SDL_Rect rect = getDigitRect(0);
-        imageRepo.get(DIGITS[hundredsDigit])->render(&rect);
-
-        rect = getDigitRect(1);
-        imageRepo.get(DIGITS[tensDigit])->render(&rect);
-
-        rect = getDigitRect(2);
-        imageRepo.get(DIGITS[onesDigit])->render(&rect);
-    }
-};
 
 enum class GameState {
     INIT,
