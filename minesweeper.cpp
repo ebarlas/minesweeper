@@ -17,26 +17,9 @@
 #include "sprite/DigitPanel.h"
 #include "sprite/GameStateListener.h"
 #include "sprite/Timer.h"
+#include "sprite/TileListener.h"
 
 using namespace minesweeper;
-
-class TileListener {
-public:
-    virtual void onReveal(bool mine, bool adjacentMines) {
-
-    }
-
-    virtual void onClear() {
-
-    }
-
-    virtual void onFlag(bool flagged) {
-
-    }
-};
-
-using TileListenerPtr = std::shared_ptr<TileListener>;
-using TileListenerWPtr = std::weak_ptr<TileListener>;
 
 class FlagStateListener {
 public:

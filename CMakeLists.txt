@@ -19,5 +19,6 @@ add_executable(
         sdl/Renderer.cpp
         sprite/Sprite.cpp
         sprite/DigitPanel.cpp
-        sprite/Timer.cpp)
+        sprite/Timer.cpp
+        sprite/TileListener.cpp)
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})
