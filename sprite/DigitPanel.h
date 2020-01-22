@@ -10,7 +10,7 @@ namespace minesweeper {
     public:
         void render() override;
     protected:
-        DigitPanel(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox);
+        DigitPanel(ImageRepo &imageRepo, SDL_Rect boundingBox);
         virtual SDL_Rect getDigitRect(int position) = 0;
         virtual int getDisplayValue() = 0;
     private:

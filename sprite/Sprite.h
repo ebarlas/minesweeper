@@ -2,7 +2,7 @@
 #define MINESWEEPER_SPRITE_H
 
 #include "SDL.h"
-#include "../sdl/Renderer.h"
+#include "../sdl/ImageRepo.h"
 
 namespace minesweeper {
     class Sprite {
@@ -13,10 +13,9 @@ namespace minesweeper {
         virtual ~Sprite() = default;
     protected:
         ImageRepo &imageRepo;
-        Renderer &renderer;
         SDL_Rect boundingBox;
         bool contains(int x, int y);
-        Sprite(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox);
+        Sprite(ImageRepo &imageRepo, SDL_Rect boundingBox);
     };
 
     using SpritePtr = std::shared_ptr<Sprite>;

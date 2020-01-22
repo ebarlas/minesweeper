@@ -16,44 +16,9 @@
 #include "sprite/Sprite.h"
 #include "sprite/DigitPanel.h"
 #include "sprite/GameStateListener.h"
+#include "sprite/Timer.h"
 
 using namespace minesweeper;
-
-class Timer : public DigitPanel, public GameStateListener {
-private:
-    const Layout &layout;
-    ClockTimer timer;
-    bool running;
-    int elapsed;
-public:
-    Timer(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout)
-            : DigitPanel(imageRepo, renderer, layout.getTimerDigitPanel()), layout(layout), running(false), elapsed(0) {
-
-    }
-
-    SDL_Rect getDigitRect(int position) override {
-        return layout.getTimerDigit(position);
-    }
-
-    int getDisplayValue() override {
-        return running ? static_cast<int>(timer.elapsed()) : elapsed;
-    }
-
-    void onStateChange(GameState state) override {
-        if (state == GameState::PLAYING) {
-            running = true;
-            timer.reset();
-        } else if (state == GameState::WON || state == GameState::LOST) {
-            running = false;
-            elapsed = static_cast<int>(timer.elapsed());
-        } else {
-            running = false;
-            elapsed = 0;
-        }
-    }
-};
-
-using TimerPtr = std::shared_ptr<Timer>;
 
 class TileListener {
 public:
@@ -98,8 +63,8 @@ private:
     }
 
 public:
-    FlagCounter(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
-            DigitPanel(imageRepo, renderer, layout.getFlagsDigitPanel()),
+    FlagCounter(ImageRepo &imageRepo, const Options &options, const Layout &layout) :
+            DigitPanel(imageRepo, layout.getFlagsDigitPanel()),
             options(options),
             layout(layout),
             flags(options.getMines()) {
@@ -165,8 +130,8 @@ private:
     }
 
 public:
-    Button(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
-            Sprite(imageRepo, renderer, layout.getFace()),
+    Button(ImageRepo &imageRepo, const Options &options, const Layout &layout) :
+            Sprite(imageRepo, layout.getFace()),
             state(GameState::INIT),
             revealed(0),
             options(options) {
@@ -282,8 +247,8 @@ private:
     }
 
 public:
-    Tile(ImageRepo &repo, Renderer &ren, const SDL_Rect boundingBox, int adjMines, bool mine) :
-            Sprite(repo, ren, boundingBox),
+    Tile(ImageRepo &repo, const SDL_Rect boundingBox, int adjMines, bool mine) :
+            Sprite(repo, boundingBox),
             adjacentMines(adjMines),
             adjacentFlags(0),
             mine(mine),
@@ -399,16 +364,16 @@ private:
     MineField mineField;
     const Options &options;
 public:
-    Grid(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout) :
-            Sprite(imageRepo, renderer, layout.getGrid()),
+    Grid(ImageRepo &imageRepo, const Options &options, const Layout &layout) :
+            Sprite(imageRepo, layout.getGrid()),
             tiles{options.getRows(), options.getColumns(), TilePtr()},
             mineField(options),
             options(options) {
-        auto fn = [&imageRepo, &renderer, &layout, this](int r, int c, TilePtr &t) {
+        auto fn = [&imageRepo, &layout, this](int r, int c, TilePtr &t) {
             int adjacentMines = mineField.adjacentMines(r, c);
             bool mine = mineField.mineAt(r, c);
             SDL_Rect rect = layout.getTile(boundingBox.x, boundingBox.y, r, c);
-            t = std::make_shared<Tile>(imageRepo, renderer, rect, adjacentMines, mine);
+            t = std::make_shared<Tile>(imageRepo, rect, adjacentMines, mine);
         };
         tiles.forEach(fn);
     }
@@ -454,8 +419,8 @@ using GridPtr = std::shared_ptr<Grid>;
 
 class Background : public Sprite {
 public:
-    Background(ImageRepo &imageRepo, Renderer &renderer, const Layout &layout, Mode::Enum mode)
-            : Sprite(imageRepo, renderer, layout.getBackground()), mode(mode) {
+    Background(ImageRepo &imageRepo, const Layout &layout, Mode::Enum mode)
+            : Sprite(imageRepo, layout.getBackground()), mode(mode) {
 
     }
 
@@ -499,11 +464,11 @@ private:
 public:
     Game(ImageRepo &imageRepo, Renderer &renderer, const Options &options, const Layout &layout, Mode::Enum mode)
             : renderer(renderer) {
-        BackgroundPtr background{std::make_shared<Background>(imageRepo, renderer, layout, mode)};
-        TimerPtr timer{std::make_shared<Timer>(imageRepo, renderer, layout)};
-        FlagCounterPtr flagCounter{std::make_shared<FlagCounter>(imageRepo, renderer, options, layout)};
-        ButtonPtr button{std::make_shared<Button>(imageRepo, renderer, options, layout)};
-        GridPtr grid{std::make_shared<Grid>(imageRepo, renderer, options, layout)};
+        BackgroundPtr background{std::make_shared<Background>(imageRepo, layout, mode)};
+        TimerPtr timer{std::make_shared<Timer>(imageRepo, layout)};
+        FlagCounterPtr flagCounter{std::make_shared<FlagCounter>(imageRepo, options, layout)};
+        ButtonPtr button{std::make_shared<Button>(imageRepo, options, layout)};
+        GridPtr grid{std::make_shared<Grid>(imageRepo, options, layout)};
 
         std::vector<GameStateListenerWPtr> gameStateListeners{grid, timer, flagCounter};
         button->setListeners(gameStateListeners);

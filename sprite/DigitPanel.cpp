@@ -19,8 +19,7 @@ namespace minesweeper {
         imageRepo.get(DIGITS[onesDigit])->render(&rect);
     }
 
-    DigitPanel::DigitPanel(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
-            : Sprite(imageRepo, renderer, boundingBox) {
+    DigitPanel::DigitPanel(ImageRepo &imageRepo, SDL_Rect boundingBox) : Sprite(imageRepo, boundingBox) {
 
     }
 }

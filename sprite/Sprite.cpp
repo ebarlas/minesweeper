@@ -1,8 +1,7 @@
 #include "Sprite.h"
 
 namespace minesweeper {
-    Sprite::Sprite(ImageRepo &imageRepo, Renderer &renderer, SDL_Rect boundingBox)
-            : imageRepo(imageRepo), renderer(renderer), boundingBox(boundingBox) {
+    Sprite::Sprite(ImageRepo &imageRepo, SDL_Rect boundingBox) : imageRepo(imageRepo), boundingBox(boundingBox) {
 
     }
 
