@@ -10,6 +10,7 @@
 #include "config/Layout.h"
 #include "util/ClockTimer.h"
 #include "util/Random.h"
+#include "util/Matrix.h"
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
 #include "sprite/Sprite.h"
@@ -23,31 +24,6 @@
 #include "sprite/Tile.h"
 
 using namespace minesweeper;
-
-template<typename T>
-class Matrix {
-private:
-    int rows;
-    int columns;
-    std::vector<T> matrix;
-public:
-    Matrix(int rows, int columns, const T &value) : rows(rows), columns(columns), matrix(rows * columns, value) {
-
-    }
-
-    T &at(int row, int col) {
-        int n = row * columns + col;
-        return matrix[n];
-    }
-
-    void forEach(std::function<void(int row, int col, T &val)> fn) {
-        for (int i = 0; i < matrix.size(); i++) {
-            int row = i / columns;
-            int col = i % columns;
-            fn(row, col, matrix[i]);
-        }
-    }
-};
 
 class Grid : public Sprite, public GameStateListener, public FlagStateListener {
 private:

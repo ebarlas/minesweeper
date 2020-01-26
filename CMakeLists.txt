@@ -14,6 +14,7 @@ add_executable(
         config/Layout.cpp
         util/ClockTimer.cpp
         util/Random.cpp
+        util/Matrix.h
         sdl/Texture.cpp
         sdl/ImageRepo.cpp
         sdl/Renderer.cpp
