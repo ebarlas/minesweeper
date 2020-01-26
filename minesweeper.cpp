@@ -18,36 +18,9 @@
 #include "sprite/FlagCounter.h"
 #include "sprite/Button.h"
 #include "sprite/Grid.h"
+#include "sprite/Background.h"
 
 using namespace minesweeper;
-
-class Background : public Sprite {
-public:
-    Background(ImageRepo &imageRepo, const Layout &layout, Mode::Enum mode)
-            : Sprite(imageRepo, layout.getBackground()), mode(mode) {
-
-    }
-
-    void render() override {
-        imageRepo.get(getBackground())->render(&boundingBox);
-    }
-
-private:
-    Mode::Enum mode;
-
-    const char *getBackground() {
-        switch (mode) {
-            case Mode::BEGINNER:
-                return "bg_beginner";
-            case Mode::INTERMEDIATE:
-                return "bg_intermediate";
-            default:
-                return "bg_expert";
-        }
-    }
-};
-
-using BackgroundPtr = std::shared_ptr<Background>;
 
 class Game {
 private:
