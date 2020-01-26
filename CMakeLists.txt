@@ -28,5 +28,6 @@ add_executable(
         sprite/MineField.cpp
         sprite/Tile.cpp
         sprite/Grid.cpp
-        sprite/Background.cpp)
+        sprite/Background.cpp
+        sprite/Game.cpp)
 target_link_libraries(minesweeper ${SDL2_LIBRARIES})
