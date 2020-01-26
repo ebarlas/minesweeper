@@ -8,7 +8,7 @@ namespace minesweeper {
     template<typename T>
     class Matrix {
     public:
-        Matrix(int rows, int columns, const T &value);
+        Matrix(int rows, int columns);
         T &at(int row, int col);
         void forEach(std::function<void(int row, int col, T &val)> fn);
     private:
@@ -18,7 +18,7 @@ namespace minesweeper {
     };
 
     template<typename T>
-    Matrix<T>::Matrix(int rows, int columns, const T &value) : rows(rows), columns(columns), matrix(rows * columns, value) {
+    Matrix<T>::Matrix(int rows, int columns) : rows(rows), columns(columns), matrix(rows * columns) {
 
     }
 
