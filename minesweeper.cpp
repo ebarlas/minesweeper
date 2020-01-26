@@ -10,6 +10,7 @@
 #include "util/Matrix.h"
 #include "sdl/ImageRepo.h"
 #include "sdl/Renderer.h"
+#include "sdl/Window.h"
 #include "sprite/Sprite.h"
 #include "sprite/GameStateListener.h"
 #include "sprite/Timer.h"
@@ -83,24 +84,6 @@ public:
     }
 };
 
-class Window {
-private:
-    SDL_Window *win;
-public:
-    Window(const Layout &layout) {
-        SDL_Rect rect = layout.getWindow();
-        win = SDL_CreateWindow("Minesweeper", rect.x, rect.y, rect.w, rect.h, SDL_WINDOW_SHOWN);
-    }
-
-    ~Window() {
-        SDL_DestroyWindow(win);
-    }
-
-    Renderer createRenderer() {
-        return Renderer{win};
-    }
-};
-
 int main(int argc, char **argv) {
     Mode::Enum mode = Mode::parse(argc > 1 ? *argv[1] : 'e');
     Options options{Options::getOptions(mode)};
@@ -111,7 +94,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    Window window{layout};
+    Window window{layout.getWindow()};
     Renderer renderer{window.createRenderer()};
     ImageRepo imageRepo{renderer.createImageRepo("images/")};
 

@@ -18,6 +18,7 @@ add_executable(
         sdl/Texture.cpp
         sdl/ImageRepo.cpp
         sdl/Renderer.cpp
+        sdl/Window.cpp
         sprite/Sprite.cpp
         sprite/DigitPanel.cpp
         sprite/Timer.cpp
